@@ -1,36 +1,56 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Python
+__pycache__/
+$.pyc
+.pyo
+.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# testing
-/coverage
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# OS
 .DS_Store
-*.pem
+Thumbs.db
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
+# Environment variables
 .env
+.env.local
+.env.*.local
 
-# vercel
-.vercel
+# Logs
+*.log
+logs/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Package files
+-node_modules/
+.pnpm-store/
+ylsr-cache/
+
+# Testing
+coverage/
+.pytest_cache/
+.tox/
+
+# Model artifacts (optional - uncomment if you want to exclude large model files)
+# models/
+# *.ckpt
+# *.pth
+# *.bin
+# *.h5
+
+# Documentation build
+docs/_build/
+
+# Temporary files
+*.tmp
+*.bak
+temp/
