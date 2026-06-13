@@ -1,12 +1,12 @@
 # Veyra
 
-**ðŸš€ The Next Generation of Artificial Intelligence**
+**The Next Generation of Artificial Intelligence**
 
 Veyra is a breakthrough advanced AI-powered Large Language Model (LLM) featuring never-before-seen capabilities and a completely unique new brain/engine architecture. This is not just another LLM â€” it's a revolutionary leap forward in artificial intelligence.
 
 ---
 
-## âœ¨ Revolutionary Features
+## Revolutionary Features
 
 ### Never-Before-Seen Capabilities
 - **Unique Brain Architecture**: Veyra operates on a completely novel engine design that redefines how AI models process, learn, and generate information
@@ -24,7 +24,7 @@ Veyra is a breakthrough advanced AI-powered Large Language Model (LLM) featuring
 
 ---
 
-## ðŸ§  The Veyra Engine
+## The Veyra Engine
 
 Veyra's proprietary brain/engine architecture represents a paradigm shift in AI model design. This groundbreaking foundation enables:
 
@@ -35,7 +35,7 @@ Veyra's proprietary brain/engine architecture represents a paradigm shift in AI 
 
 ---
 
-## ðŸŽ¯ What You Can Do
+## What You Can Do
 
 Veyra is designed for:
 - Complex problem-solving at unprecedented levels
@@ -46,7 +46,7 @@ Veyra is designed for:
 
 ---
 
-## ðŸš€ Getting Started
+## Getting Started
 
 Veyra is ready to transform how you work with AI. Whether you're a developer, researcher, or enterprise, Veyra's revolutionary capabilities will exceed your expectations.
 
@@ -54,13 +54,13 @@ Veyra is ready to transform how you work with AI. Whether you're a developer, re
 
 ---
 
-## ðŸ“š Documentation
+## Documentation
 
 Coming soon â€” comprehensive documentation for Veyra's unique features and engine will be available here.
 
 ---
 
-## ðŸ”® The Future Is Here
+## The Future Is Here
 
 Veyra isn't just an improvement on existing LLMs â€” it's a fundamental reimagining of what AI can be. With its unique brain/engine and never-before-seen features, Veyra opens possibilities that were previously out of reach.
 
