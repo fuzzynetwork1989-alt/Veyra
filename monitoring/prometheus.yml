@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'veyra-api'
+    static_configs:
+      - targets: ['api:8000']
+    metrics_path: '/metrics'
+
+  - job_name: 'veyra-web'
+    static_configs:
+      - targets: ['web:3000']
+    metrics_path: '/api/metrics'
+
+  - job_name: 'veyra-admin'
+    static_configs:
+      - targets: ['admin:3000']
+    metrics_path: '/api/metrics'
+
+  - job_name: 'veyra-worker'
+    static_configs:
+      - targets: ['worker:8001']
+    metrics_path: '/metrics'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
