@@ -6,6 +6,7 @@ export interface VeyraClientConfig {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
   user_id: string;
   email: string;
@@ -46,6 +47,56 @@ export class VeyraClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+    });
+    return response.json();
+  }
+
+  async refresh(refreshToken: string): Promise<AuthResponse> {
+    const response = await this.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    return response.json();
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    await this.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  }
+
+  async getOAuthProviders(): Promise<{ providers: string[] }> {
+    const response = await this.request("/auth/oauth/providers", { method: "GET" });
+    return response.json();
+  }
+
+  async getGoogleOAuthUrl(): Promise<{ url: string }> {
+    const response = await this.request("/auth/oauth/google/url", { method: "GET" });
+    return response.json();
+  }
+
+  async completeGoogleOAuth(code: string): Promise<AuthResponse> {
+    const response = await this.request("/auth/oauth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return response.json();
+  }
+
+  async getGitHubOAuthUrl(): Promise<{ url: string }> {
+    const response = await this.request("/auth/oauth/github/url", { method: "GET" });
+    return response.json();
+  }
+
+  async completeGitHubOAuth(code: string): Promise<AuthResponse> {
+    const response = await this.request("/auth/oauth/github", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
     });
     return response.json();
   }
@@ -187,6 +238,27 @@ export class VeyraClient {
     return response.json();
   }
 
+  async getAdminQuotas(): Promise<QuotaConfig> {
+    const response = await this.request("/admin/quotas", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
+  async updateAdminQuotas(quotas: {
+    tokens?: number;
+    chats?: number;
+    tasks?: number;
+  }): Promise<{ effective: QuotaLimits; source: string }> {
+    const response = await this.request("/admin/quotas", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
+      body: JSON.stringify(quotas),
+    });
+    return response.json();
+  }
+
   async getAdminUsers(): Promise<AdminUserSummary[]> {
     const response = await this.request("/admin/users", {
       method: "GET",
@@ -323,7 +395,7 @@ export class VeyraClient {
     timeoutMs?: number
   ): Promise<Response> {
     const url = `${this.config.baseUrl}${path}`;
-    const timeout = timeoutMs ?? this.config.timeout;
+    const timeout = timeoutMs ?? this.config.timeout ?? 300000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -378,12 +450,25 @@ export interface ChatStreamResult {
   tokens_used: number;
 }
 
+export interface QuotaLimits {
+  tokens: number;
+  chats: number;
+  tasks: number;
+}
+
+export interface QuotaConfig {
+  effective: QuotaLimits;
+  defaults: QuotaLimits;
+  source: string;
+}
+
 export interface AdminStats {
   users: number;
   tasks_running: number;
   tasks_total: number;
   usage_24h: { tokens: number; events: number };
   health: Record<string, unknown>;
+  quotas?: QuotaConfig;
 }
 
 export interface AdminUserSummary {

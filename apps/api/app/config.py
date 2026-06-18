@@ -8,7 +8,14 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://veyra:veyra_password_change_this@localhost:5432/veyra"
     redis_url: str = "redis://localhost:6379"
     jwt_secret: str = "veyra-secret-change-this"
-    jwt_expires_minutes: int = 60 * 24 * 7
+    jwt_expires_minutes: int = 60
+    refresh_token_days: int = 30
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:3000/oauth/google"
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    github_redirect_uri: str = "http://localhost:3000/oauth/github"
     migrations_dir: str = "../../migrations"
     openai_api_key: str = "lm-studio"
     openai_base_url: str = "http://127.0.0.1:1234/v1"

@@ -88,7 +88,7 @@ jobs:
 
       - name: Run API integration tests
         working-directory: ./apps/api
-        run: python -m unittest tests.test_auth_integration tests.test_chat_integration -v
+        run: python -m unittest tests.test_auth_integration tests.test_chat_integration tests.test_tasks_integration -v
         env:
           RUN_INTEGRATION_TESTS: "1"
           MOCK_LLM: "1"

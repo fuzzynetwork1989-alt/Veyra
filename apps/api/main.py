@@ -1,12 +1,13 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import close_pool, init_pool
 from app.health import full_health
+from app.metrics import metrics_payload, refresh_task_gauges
 from app.middleware import RequestLoggingMiddleware
 from app.migrate import run_migrations
 from app.redis_client import close_redis, init_redis
@@ -18,6 +19,8 @@ logger = logging.getLogger(__name__)
 CORS_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
 ]
 
 
@@ -37,7 +40,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Veyra API",
     description="Developer-First AI Platform Backend Services",
-    version="0.2.0",
+    version="0.3.1",
     lifespan=lifespan,
 )
 
@@ -70,14 +73,21 @@ app.include_router(admin.router)
 
 @app.get("/health")
 async def health_check():
+    refresh_task_gauges()
     return full_health()
+
+
+@app.get("/metrics")
+async def metrics():
+    refresh_task_gauges()
+    return Response(content=metrics_payload(), media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
 @app.get("/")
 async def root():
     return {
         "name": "Veyra API",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "description": "Developer-First AI Platform Backend Services",
     }
 

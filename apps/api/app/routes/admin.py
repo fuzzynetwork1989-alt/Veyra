@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from app.database import fetch_all, fetch_one
 from app.health import full_health
+from app.quota_settings import get_quota_config, set_global_quotas
 from app.routes.auth import get_current_user
 from app.usage import get_user_usage_summary
 
@@ -12,6 +14,12 @@ def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user["role"] != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
+
+
+class QuotaUpdate(BaseModel):
+    tokens: int | None = Field(default=None, ge=1, le=10_000_000)
+    chats: int | None = Field(default=None, ge=1, le=100_000)
+    tasks: int | None = Field(default=None, ge=1, le=100_000)
 
 
 @router.get("/stats")
@@ -37,7 +45,19 @@ async def admin_stats(_: dict = Depends(require_admin)):
             "events": int(usage_24h["events"]) if usage_24h else 0,
         },
         "health": full_health(),
+        "quotas": get_quota_config(),
     }
+
+
+@router.get("/quotas")
+async def admin_get_quotas(_: dict = Depends(require_admin)):
+    return get_quota_config()
+
+
+@router.patch("/quotas")
+async def admin_update_quotas(request: QuotaUpdate, _: dict = Depends(require_admin)):
+    updated = set_global_quotas(tokens=request.tokens, chats=request.chats, tasks=request.tasks)
+    return {"effective": updated, "source": "redis_override"}
 
 
 @router.get("/users")

@@ -10,6 +10,7 @@ RUN npm ci --workspace=@veyra/worker --include-workspace-root
 
 COPY packages/agent-runtime packages/agent-runtime
 COPY apps/worker apps/worker
+COPY apps/worker/scripts apps/worker/scripts
 
 WORKDIR /app/apps/worker
 

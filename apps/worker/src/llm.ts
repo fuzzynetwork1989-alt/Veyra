@@ -43,6 +43,14 @@ export async function completeChat(
   userPrompt: string,
   options?: { maxTokens?: number; temperature?: number }
 ): Promise<LlmCompletion> {
+  if (process.env.MOCK_LLM === "1") {
+    return {
+      content: `[mock-worker] ${userPrompt.slice(0, 500)}`,
+      model: "veyra-worker-mock",
+      tokensUsed: 20,
+    };
+  }
+
   const model = await resolveModelId();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);

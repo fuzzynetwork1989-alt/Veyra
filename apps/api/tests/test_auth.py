@@ -21,9 +21,12 @@ class AuthRouteTests(unittest.TestCase):
         for patcher in self.patchers:
             patcher.stop()
 
+    @patch("app.routes.auth.issue_refresh_token", return_value="refresh-token-test")
     @patch("app.routes.auth.create_default_project")
     @patch("app.routes.auth.fetch_one")
-    def test_register_creates_user(self, mock_fetch_one, mock_create_default_project):
+    def test_register_creates_user(
+        self, mock_fetch_one, mock_create_default_project, _mock_refresh
+    ):
         mock_fetch_one.side_effect = [
             None,
             {
@@ -60,8 +63,9 @@ class AuthRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 409)
 
+    @patch("app.routes.auth.issue_refresh_token", return_value="refresh-token-test")
     @patch("app.routes.auth.fetch_one")
-    def test_login_returns_token_for_valid_credentials(self, mock_fetch_one):
+    def test_login_returns_token_for_valid_credentials(self, mock_fetch_one, _mock_refresh):
         mock_fetch_one.return_value = {
             "id": "11111111-1111-1111-1111-111111111111",
             "email": "dev@example.com",

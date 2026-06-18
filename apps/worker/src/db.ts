@@ -13,12 +13,15 @@ export async function updateTaskStatus(
   await pool.query(
     `
       UPDATE tasks
-      SET status = $1,
-          result = $2,
+      SET status = $1::varchar(50),
+          result = $2::jsonb,
           error = $3,
-          completed_at = CASE WHEN $1 IN ('completed', 'failed') THEN CURRENT_TIMESTAMP ELSE completed_at END,
+          completed_at = CASE
+            WHEN $1::varchar(50) IN ('completed', 'failed') THEN CURRENT_TIMESTAMP
+            ELSE completed_at
+          END,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4
+      WHERE id = $4::uuid
     `,
     [status, result ? JSON.stringify(result) : null, error || null, taskId]
   );

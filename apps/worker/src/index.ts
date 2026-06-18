@@ -1,7 +1,9 @@
+import "./env";
 import Redis from "ioredis";
 import { AgentRuntime, Task, TaskStatus } from "@veyra/agent-runtime";
 import { updateTaskStatus, closeDatabase } from "./db";
 import { builtinTools } from "./tools";
+import { startMetricsServer, tasksProcessed, taskDuration } from "./metrics";
 
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 const queueKey = "veyra:tasks:queue";
@@ -22,6 +24,7 @@ interface QueueTask {
 }
 
 async function processTask(payload: QueueTask) {
+  const started = Date.now();
   console.log(`Processing task: ${payload.id}`);
   await updateTaskStatus(payload.id, "running");
 
@@ -51,16 +54,21 @@ async function processTask(payload: QueueTask) {
       results: outcome.results,
       verification: outcome.verification,
     });
+    tasksProcessed.inc({ status: "completed" });
     console.log(`Task ${payload.id} completed successfully`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Task ${payload.id} failed:`, message);
     await updateTaskStatus(payload.id, "failed", undefined, message);
+    tasksProcessed.inc({ status: "failed" });
+  } finally {
+    taskDuration.observe((Date.now() - started) / 1000);
   }
 }
 
 async function workerLoop() {
   console.log("Veyra Worker started");
+  startMetricsServer(Number(process.env.METRICS_PORT || "8001"));
 
   while (true) {
     try {

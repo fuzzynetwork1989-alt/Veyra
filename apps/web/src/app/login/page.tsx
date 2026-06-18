@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@veyra/ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@veyra/ui";
 import { createApiClient } from "@/lib/api";
-import { setStoredToken } from "@/lib/auth";
+import { setStoredTokens } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +15,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [oauthProviders, setOauthProviders] = useState<string[]>([]);
+
+  useEffect(() => {
+    createApiClient()
+      .getOAuthProviders()
+      .then((res) => setOauthProviders(res.providers))
+      .catch(() => setOauthProviders([]));
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,11 +36,27 @@ export default function LoginPage() {
           ? await client.login(email, password)
           : await client.register(email, password);
 
-      setStoredToken(auth.access_token);
+      setStoredTokens(auth.access_token, auth.refresh_token);
       router.push("/chat");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleOAuth(provider: "google" | "github") {
+    setError(null);
+    setLoading(true);
+    try {
+      const client = createApiClient();
+      const { url } =
+        provider === "google"
+          ? await client.getGoogleOAuthUrl()
+          : await client.getGitHubOAuthUrl();
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "OAuth unavailable");
       setLoading(false);
     }
   }
@@ -80,6 +104,33 @@ export default function LoginPage() {
               {loading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}
             </Button>
           </form>
+          {oauthProviders.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              <p className="text-center text-xs text-slate-500">Or continue with</p>
+              {oauthProviders.includes("google") ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={loading}
+                  onClick={() => handleOAuth("google")}
+                >
+                  Google
+                </Button>
+              ) : null}
+              {oauthProviders.includes("github") ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={loading}
+                  onClick={() => handleOAuth("github")}
+                >
+                  GitHub
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-4 flex items-center justify-between text-sm">
             <button
               type="button"
