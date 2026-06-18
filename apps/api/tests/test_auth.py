@@ -21,8 +21,9 @@ class AuthRouteTests(unittest.TestCase):
         for patcher in self.patchers:
             patcher.stop()
 
+    @patch("app.routes.auth.create_default_project")
     @patch("app.routes.auth.fetch_one")
-    def test_register_creates_user(self, mock_fetch_one):
+    def test_register_creates_user(self, mock_fetch_one, mock_create_default_project):
         mock_fetch_one.side_effect = [
             None,
             {

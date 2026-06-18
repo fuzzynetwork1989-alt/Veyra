@@ -1,75 +1,93 @@
 import Redis from "ioredis";
+import { AgentRuntime, Task, TaskStatus } from "@veyra/agent-runtime";
+import { updateTaskStatus, closeDatabase } from "./db";
+import { builtinTools } from "./tools";
 
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 const queueKey = "veyra:tasks:queue";
 const processingKey = "veyra:tasks:processing";
+const runtime = new AgentRuntime();
 
-async function processTask(task: any) {
-  console.log(`Processing task: ${task.id}`);
-  
+for (const tool of builtinTools) {
+  runtime.registerTool(tool);
+}
+
+interface QueueTask {
+  id: string;
+  userId: string;
+  projectId?: string | null;
+  description: string;
+  context: Record<string, unknown>;
+  priority: string;
+}
+
+async function processTask(payload: QueueTask) {
+  console.log(`Processing task: ${payload.id}`);
+  await updateTaskStatus(payload.id, "running");
+
+  const task: Task = {
+    id: payload.id,
+    description: payload.description,
+    context: payload.context,
+    userId: payload.userId,
+    projectId: payload.projectId || undefined,
+    priority: (payload.priority as Task["priority"]) || "medium",
+    status: TaskStatus.IN_PROGRESS,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
   try {
-    // Simulate task processing
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log(`Task ${task.id} completed successfully`);
-    
-    // Move to completed queue
-    await redis.lpush("veyra:tasks:completed", JSON.stringify({
-      ...task,
-      status: "completed",
-      completedAt: new Date().toISOString(),
-    }));
+    const outcome = await runtime.executeTask(task, {
+      task,
+      executionResults: [],
+      verificationResults: [],
+      memory: {},
+      retrieval: {},
+    });
+
+    await updateTaskStatus(payload.id, "completed", {
+      plan: outcome.plan,
+      results: outcome.results,
+      verification: outcome.verification,
+    });
+    console.log(`Task ${payload.id} completed successfully`);
   } catch (error) {
-    console.error(`Task ${task.id} failed:`, error);
-    
-    // Move to failed queue
-    await redis.lpush("veyra:tasks:failed", JSON.stringify({
-      ...task,
-      status: "failed",
-      error: error instanceof Error ? error.message : String(error),
-      failedAt: new Date().toISOString(),
-    }));
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Task ${payload.id} failed:`, message);
+    await updateTaskStatus(payload.id, "failed", undefined, message);
   }
 }
 
 async function workerLoop() {
   console.log("Veyra Worker started");
-  
+
   while (true) {
     try {
-      // Blocking pop from the right side of the queue
       const result = await redis.brpop(queueKey, 5);
-      
-      if (result) {
-        const task = JSON.parse(result[1]);
-        
-        // Add to processing set
-        await redis.sadd(processingKey, task.id);
-        
-        await processTask(task);
-        
-        // Remove from processing set
-        await redis.srem(processingKey, task.id);
+      if (!result) {
+        continue;
       }
+
+      const payload = JSON.parse(result[1]) as QueueTask;
+      await redis.sadd(processingKey, payload.id);
+      await processTask(payload);
+      await redis.srem(processingKey, payload.id);
     } catch (error) {
       console.error("Worker error:", error);
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
 }
 
-// Handle graceful shutdown
-process.on("SIGINT", async () => {
+async function shutdown() {
   console.log("Shutting down worker...");
   await redis.quit();
+  await closeDatabase();
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", async () => {
-  console.log("Shutting down worker...");
-  await redis.quit();
-  process.exit(0);
-});
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
-// Start worker
 workerLoop().catch(console.error);

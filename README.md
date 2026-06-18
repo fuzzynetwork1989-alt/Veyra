@@ -1,114 +1,74 @@
 # Veyra
 
-Developer-first AI platform built to help engineers plan, build, test, deploy, and operate software systems with strong control and clear operational boundaries.
+Developer-first AI platform for planning, building, testing, deploying, and operating software systems.
 
-## Overview
+## Monorepo layout
 
-Veyra is not a generic chatbot; it is a production-oriented platform for agentic software work, retrieval, memory, observability, and deployment.
+- `apps/web` — Next.js product UI
+- `apps/api` — FastAPI backend
+- `apps/worker` — Redis queue worker with `@veyra/agent-runtime`
+- `packages/*` — shared SDK, UI, agent runtime, retrieval, memory
 
-## Architecture
-
-### Multi-App Structure
-
-- **apps/web** - Main product web application (Next.js)
-- **apps/api** - Backend services (FastAPI)
-- **apps/admin** - Internal operations dashboard
-- **apps/worker** - Async task processing
-- **apps/desktop** - Future power-user workflows
-- **apps/mobile** - Future companion access
-
-### Shared Packages
-
-- **packages/ui** - Shared components and themes
-- **packages/auth** - Identity and permissions
-- **packages/memory** - Session and project memory
-- **packages/retrieval** - Hybrid source search
-- **packages/agent-runtime** - Orchestration engine
-- **packages/observability** - Telemetry and monitoring
-- **packages/sdk** - Client integrations
-
-## Getting Started
+## Local development
 
 ### Prerequisites
 
-- Node.js >= 18.0.0
-- npm >= 9.0.0
-- Docker (for local development with PostgreSQL and Redis)
+- Node.js 18+
+- Python 3.11+
+- Docker Desktop
+- LM Studio (OpenAI-compatible server on `http://127.0.0.1:1234`)
 
-### Installation
+### Start infrastructure
 
 ```bash
-# Install dependencies
-npm install
-
-# Start infrastructure services
 docker-compose up -d postgres redis
+```
 
-# Run development servers
+### API
+
+```bash
+cd apps/api
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn main:app --reload
+```
+
+### Worker
+
+```bash
+cd apps/worker
+npm install
 npm run dev
 ```
 
-### Development
+### Web
 
 ```bash
-# Build all packages and apps
-npm run build
-
-# Run tests
-npm run test
-
-# Lint code
-npm run lint
-
-# Type check
-npm run typecheck
+cd apps/web
+cp .env.local.example .env.local
+npm run dev
 ```
 
-## Core Features
+Open http://localhost:3000
 
-### Bootstrap Track (Current Focus)
-- Web app for daily use
-- Core chat and agentic tasks
-- File upload and retrieval
-- Basic session and project memory
-- Auth, roles, and usage limits
-- Logging, tracing, and cost visibility
-- Deployment-ready architecture
+## Health check
 
-### Frontier Track (Future)
-- Advanced model routing
-- Long-horizon memory systems
-- Rich tool orchestration
-- Multimodal workflows
-- Eval-driven release pipelines
-- Research-grade model and retrieval improvements
+`GET http://localhost:8000/health` reports Postgres, Redis, and LM Studio status.
 
-## Platform Principles
+## Tests
 
-1. Think in systems, not isolated features
-2. Prefer production-ready implementation over theory
-3. Separate architecture, product, safety, and ops concerns
-4. Make every feature testable and observable
-5. Use strong defaults when details are missing
-6. Never pretend a feature works without code, wiring, and validation
+```bash
+cd apps/api
+python -m unittest tests.test_auth -v
+set RUN_INTEGRATION_TESTS=1
+python -m unittest tests.test_auth_integration tests.test_chat_integration -v
+```
 
-## Tech Stack
+## Current capabilities
 
-- **Web**: Next.js 14, React, Tailwind CSS, shadcn/ui
-- **API**: FastAPI, Python 3.11+
-- **Database**: PostgreSQL 15
-- **Cache**: Redis 7
-- **Orchestration**: Custom agent runtime
-- **Observability**: Prometheus, Grafana, structured logging
-- **Deployment**: Docker, GitHub Actions, Railway/Vercel
-
-## Documentation
-
-- [Architecture](./docs/architecture/)
-- [Product](./docs/product/)
-- [Runbooks](./docs/runbooks/)
-- [Architecture Decision Records](./docs/adr/)
-
-## License
-
-MIT License - See LICENSE file for details.
+- Postgres auth (register/login/me)
+- Projects and persisted chat session metadata
+- Chat with LM Studio + Redis message memory
+- Optional project document upload and RAG
+- Async agent tasks via worker + agent runtime
+- Rate limiting, request logging, usage events

@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "ioredis": "^5.3.2"
+    "@veyra/agent-runtime": "*",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "@types/ioredis": "^5.0.0",
+    "@types/pg": "^8.10.9",
     "typescript": "^5.3.0",
     "ts-node": "^10.9.0"
   }

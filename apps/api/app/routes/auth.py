@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.config import get_settings
 from app.database import fetch_one
+from app.projects_service import create_default_project
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
@@ -148,6 +149,7 @@ async def register(user: UserRegister):
         )
 
     user_id = str(created_user["id"])
+    create_default_project(user_id)
     access_token = create_access_token(
         {
             "sub": created_user["email"],

@@ -70,6 +70,7 @@ export class VeyraClient {
         body: JSON.stringify({
           message,
           session_id: options?.sessionId,
+          project_id: options?.projectId,
           max_tokens: options?.maxTokens,
           temperature: options?.temperature,
           quality_mode: options?.qualityMode,
@@ -80,6 +81,44 @@ export class VeyraClient {
       options?.timeoutMs
     );
 
+    return response.json();
+  }
+
+  async listChatSessions(projectId?: string): Promise<ChatSessionSummary[]> {
+    const params = projectId ? new URLSearchParams({ project_id: projectId }) : "";
+    const response = await this.request(
+      `/chat/sessions${params ? `?${params.toString()}` : ""}`,
+      { method: "GET", headers: this.authHeaders() }
+    );
+    return response.json();
+  }
+
+  async listProjects(): Promise<ProjectSummary[]> {
+    const response = await this.request("/projects/", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
+  async createProject(name: string, description?: string): Promise<ProjectSummary> {
+    const response = await this.request("/projects/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
+      body: JSON.stringify({ name, description }),
+    });
+    return response.json();
+  }
+
+  async uploadDocument(projectId: string, file: File): Promise<any> {
+    const form = new FormData();
+    form.append("project_id", projectId);
+    form.append("file", file);
+    const response = await this.request("/documents/upload", {
+      method: "POST",
+      headers: this.authHeaders(),
+      body: form,
+    });
     return response.json();
   }
 
@@ -120,7 +159,10 @@ export class VeyraClient {
     return response.json();
   }
 
-  async executeTask(task: string, context?: Record<string, any>): Promise<any> {
+  async executeTask(
+    task: string,
+    options?: { context?: Record<string, any>; projectId?: string; priority?: string }
+  ): Promise<TaskResponse> {
     const response = await this.request("/tasks/execute", {
       method: "POST",
       headers: {
@@ -129,14 +171,16 @@ export class VeyraClient {
       },
       body: JSON.stringify({
         description: task,
-        context: context || {},
+        context: options?.context || {},
+        project_id: options?.projectId,
+        priority: options?.priority || "medium",
       }),
     });
 
     return response.json();
   }
 
-  async getTaskStatus(taskId: string): Promise<any> {
+  async getTaskStatus(taskId: string): Promise<TaskResponse> {
     const response = await this.request(`/tasks/${taskId}`, {
       method: "GET",
       headers: this.authHeaders(),
@@ -192,6 +236,7 @@ export class VeyraClient {
 
 export interface ChatOptions {
   sessionId?: string;
+  projectId?: string;
   maxTokens?: number;
   temperature?: number;
   qualityMode?: "fast" | "balanced" | "deep";
@@ -205,6 +250,7 @@ export interface ChatResponse {
   session_id: string;
   tokens_used: number;
   model: string;
+  latency_ms?: number;
   reasoning_chain?: string[];
   trace?: Record<string, any>;
   retrieved_docs?: Array<{
@@ -219,6 +265,30 @@ export interface ChatHistoryMessage {
   role: string;
   content: string;
   created_at: string;
+  model?: string | null;
+  latency_ms?: number | null;
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  project_id?: string | null;
+  updated_at: string;
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface TaskResponse {
+  task_id: string;
+  status: string;
+  description: string;
+  result?: Record<string, any> | null;
+  error?: string | null;
+  project_id?: string | null;
 }
 
 export interface ChatHistoryResponse {
