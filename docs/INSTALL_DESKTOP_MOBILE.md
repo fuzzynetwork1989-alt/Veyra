@@ -47,6 +47,15 @@ npm run desktop:dev
 
 Opens Electron loading `http://localhost:3000` with hot reload.
 
+### Run desktop without installer (quick)
+
+```bash
+npm run build:native
+npm run start:prod --workspace=@veyra/desktop
+```
+
+Launches Electron with the bundled static web UI.
+
 ### Production installer
 
 ```bash
@@ -54,6 +63,8 @@ npm run desktop:dist
 ```
 
 Output: `apps/desktop/dist/Veyra-Setup-0.1.0.exe`
+
+If `electron-builder` fails with a `7zip-bin` error, run `npm install` at the repo root and retry, or use `start:prod` above.
 
 ### Install steps
 

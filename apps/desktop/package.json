@@ -7,8 +7,8 @@
   "scripts": {
     "sync:web": "node scripts/sync-web.mjs",
     "build:web": "npm run build:native --workspace=@veyra/web",
-    "electron:dev": "cross-env VEYRA_DESKTOP_DEV=1 electron .",
-    "start:prod": "npm run sync:web && electron .",
+    "electron:dev": "cross-env VEYRA_DESKTOP_DEV=1 npx electron .",
+    "start:prod": "npm run sync:web && npx electron .",
     "dev": "concurrently -k \"npm run dev --workspace=@veyra/web\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
     "pack": "npm run sync:web && npx electron-builder --dir",
     "dist": "npm run sync:web && npx electron-builder",
