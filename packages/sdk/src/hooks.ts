@@ -1,8 +1,11 @@
-import { useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { VeyraClient, ChatOptions, ChatResponse } from "./client";
 
-export function useVeyraClient(config: { apiKey: string; baseUrl: string }) {
-  const client = new VeyraClient(config);
+export function useVeyraClient(config: { apiKey?: string; baseUrl: string }) {
+  const client = useMemo(
+    () => new VeyraClient(config),
+    [config.apiKey, config.baseUrl]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -44,7 +47,7 @@ export function useVeyraClient(config: { apiKey: string; baseUrl: string }) {
   );
 
   const retrieveMemory = useCallback(
-    async (query: string, topK?: number): Promise<any> => {
+    async (query: string, topK?: number) => {
       setLoading(true);
       setError(null);
 
@@ -62,7 +65,7 @@ export function useVeyraClient(config: { apiKey: string; baseUrl: string }) {
   );
 
   const executeTask = useCallback(
-    async (task: string, context?: Record<string, any>): Promise<any> => {
+    async (task: string, context?: Record<string, any>) => {
       setLoading(true);
       setError(null);
 
@@ -80,6 +83,7 @@ export function useVeyraClient(config: { apiKey: string; baseUrl: string }) {
   );
 
   return {
+    client,
     chat,
     addMemory,
     retrieveMemory,

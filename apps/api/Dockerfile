@@ -2,10 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY apps/api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY apps/api/ .
+COPY migrations/ /migrations/
+
+ENV MIGRATIONS_DIR=/migrations
 
 EXPOSE 8000
 

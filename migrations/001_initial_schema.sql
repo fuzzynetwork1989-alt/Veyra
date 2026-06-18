@@ -1,6 +1,8 @@
 -- Veyra Initial Schema
 -- This migration creates the core database tables for the Veyra platform
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

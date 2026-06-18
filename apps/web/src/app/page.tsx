@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@veyra/ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@veyra/ui";
 
@@ -59,7 +60,9 @@ export default function Home() {
         </div>
 
         <div className="text-center mt-12">
-          <Button size="lg">Get Started</Button>
+          <Button size="lg" asChild>
+            <Link href="/login">Get Started</Link>
+          </Button>
         </div>
       </div>
     </main>
