@@ -56,18 +56,26 @@ async def _mock_stream(*, message: str) -> AsyncIterator[str]:
         yield token + " "
 
 
+def _build_system_prompt(custom_instructions: str | None = None) -> str:
+    if custom_instructions and custom_instructions.strip():
+        return f"{SYSTEM_PROMPT}\n\nUser instructions:\n{custom_instructions.strip()}"
+    return SYSTEM_PROMPT
+
+
 async def generate_chat_response(
     *,
     message: str,
     history: list[dict[str, str]],
     temperature: float = 0.7,
     max_tokens: int = 1024,
+    custom_instructions: str | None = None,
 ) -> dict[str, Any]:
     settings = get_settings()
     if settings.mock_llm:
         return _mock_response(message=message, history=history)
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history, {"role": "user", "content": message}]
+    system_prompt = _build_system_prompt(custom_instructions)
+    messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": message}]
 
     model_id = _resolve_model_id(
         settings.openai_base_url,
@@ -124,6 +132,7 @@ async def stream_chat_response(
     history: list[dict[str, str]],
     temperature: float = 0.7,
     max_tokens: int = 1024,
+    custom_instructions: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     settings = get_settings()
     if settings.mock_llm:
@@ -132,7 +141,8 @@ async def stream_chat_response(
         yield {"type": "done", "model": "veyra-mock", "tokens_used": 12}
         return
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history, {"role": "user", "content": message}]
+    system_prompt = _build_system_prompt(custom_instructions)
+    messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": message}]
     model_id = _resolve_model_id(
         settings.openai_base_url,
         settings.openai_api_key,

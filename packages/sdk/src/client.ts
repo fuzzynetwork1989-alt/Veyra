@@ -127,6 +127,7 @@ export class VeyraClient {
           quality_mode: options?.qualityMode,
           use_rag: options?.useRag,
           use_agents: options?.useAgents,
+          custom_instructions: options?.customInstructions,
         }),
       },
       options?.timeoutMs
@@ -159,6 +160,7 @@ export class VeyraClient {
         quality_mode: options?.qualityMode,
         use_rag: options?.useRag,
         use_agents: options?.useAgents,
+        custom_instructions: options?.customInstructions,
       }),
       signal: controller.signal,
     });
@@ -433,6 +435,7 @@ export interface ChatOptions {
   qualityMode?: "fast" | "balanced" | "deep";
   useRag?: boolean;
   useAgents?: boolean;
+  customInstructions?: string;
   timeoutMs?: number;
 }
 

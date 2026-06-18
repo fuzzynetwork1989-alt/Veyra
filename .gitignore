@@ -17,6 +17,11 @@ coverage/
 out/
 build/
 dist/
+apps/desktop/www/
+apps/mobile/www/
+apps/desktop/dist/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
 
 # Production
 *.tsbuildinfo

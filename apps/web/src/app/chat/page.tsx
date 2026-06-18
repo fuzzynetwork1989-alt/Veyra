@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@veyra/ui";
 import { ChatHistoryMessage, ChatSessionSummary, ProjectSummary } from "@veyra/sdk";
+import { AppShell } from "@/components/app-shell";
 import { createApiClient } from "@/lib/api";
 import {
   clearStoredSessionId,
@@ -14,6 +15,7 @@ import {
   setStoredSessionId,
 } from "@/lib/auth";
 import { getStoredProjectId, setStoredProjectId } from "@/lib/project";
+import { getSettings } from "@/lib/settings";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -24,7 +26,8 @@ export default function ChatPage() {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [messages, setMessages] = useState<ChatHistoryMessage[]>([]);
   const [input, setInput] = useState("");
-  const [useRag, setUseRag] = useState(false);
+  const [useRag, setUseRag] = useState(() => getSettings().defaultUseRag);
+  const [showMeta, setShowMeta] = useState(() => getSettings().showModelLatency);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,10 +104,40 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
     try {
-      const result = await client.chatStream(outgoing, {
+      const prefs = getSettings();
+      const streamFn = prefs.streamingEnabled ? client.chatStream.bind(client) : null;
+      const requestOptions = {
         sessionId: sessionId || undefined,
         projectId: projectId || undefined,
         useRag,
+        useAgents: prefs.defaultUseAgents,
+        qualityMode: prefs.qualityMode,
+        temperature: prefs.temperature,
+        maxTokens: prefs.maxTokens,
+        customInstructions: prefs.customInstructions || undefined,
+      };
+
+      if (!streamFn) {
+        const result = await client.chat(outgoing, requestOptions);
+        setSessionId(result.session_id);
+        setStoredSessionId(result.session_id);
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  content: result.response,
+                  model: result.model,
+                  latency_ms: result.latency_ms,
+                }
+              : message
+          )
+        );
+        return;
+      }
+
+      const result = await streamFn(outgoing, {
+        ...requestOptions,
         onToken: (tokenChunk) => {
           setMessages((prev) =>
             prev.map((message) =>
@@ -166,8 +199,9 @@ export default function ChatPage() {
   if (!token) return null;
 
   return (
+    <AppShell>
     <main className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <div className="mx-auto flex h-screen max-w-6xl">
+      <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-6xl md:h-screen">
         <aside className="w-72 border-r border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold">Sessions</h2>
@@ -222,14 +256,9 @@ export default function ChatPage() {
                 {sessionId ? `Session ${sessionId.slice(0, 8)}...` : "New session"}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/tasks">Tasks</Link>
-              </Button>
-              <Button variant="ghost" onClick={handleSignOut}>
-                Sign out
-              </Button>
-            </div>
+            <Button variant="ghost" onClick={handleSignOut}>
+              Sign out
+            </Button>
           </header>
 
           <div className="mb-3 flex items-center gap-3 text-sm">
@@ -266,7 +295,7 @@ export default function ChatPage() {
                   >
                     <div className="mb-1 flex items-center justify-between text-xs uppercase opacity-70">
                       <span>{message.role}</span>
-                      {message.role === "assistant" && (
+                      {message.role === "assistant" && showMeta && (
                         <span>
                           {message.model || "model"}
                           {message.latency_ms ? ` · ${message.latency_ms}ms` : ""}
@@ -290,8 +319,8 @@ export default function ChatPage() {
             />
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
             <div className="flex items-center justify-between">
-              <Link href="/" className="text-sm text-slate-500 hover:underline">
-                Back home
+              <Link href="/settings" className="text-sm text-slate-500 hover:underline">
+                Settings
               </Link>
               <Button type="submit" disabled={loading || !input.trim()}>
                 {loading ? "Thinking... (local models can take a few minutes)" : "Send"}
@@ -301,5 +330,6 @@ export default function ChatPage() {
         </section>
       </div>
     </main>
+    </AppShell>
   );
 }

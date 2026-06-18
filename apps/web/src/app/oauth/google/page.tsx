@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { GoogleOAuthCallback } from "./callback";
 
-export const dynamic = "force-dynamic";
-
 export default function GoogleOAuthCallbackPage() {
   return (
     <Suspense

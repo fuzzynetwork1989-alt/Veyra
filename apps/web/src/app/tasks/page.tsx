@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@veyra/ui";
 import { TaskResponse } from "@veyra/sdk";
+import { AppShell } from "@/components/app-shell";
 import { createApiClient } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
 import { getStoredProjectId } from "@/lib/project";
@@ -66,16 +66,12 @@ export default function TasksPage() {
   if (!token) return null;
 
   return (
+    <AppShell>
     <main className="min-h-screen bg-slate-50 px-4 py-8 dark:bg-slate-900">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Agent Tasks</h1>
-            <p className="text-sm text-slate-500">Submit work to the Veyra worker and agent runtime.</p>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/chat">Back to chat</Link>
-          </Button>
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold">Agent Tasks</h1>
+          <p className="text-sm text-slate-500">Submit work to the Veyra worker and agent runtime.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mb-6 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
@@ -112,5 +108,6 @@ export default function TasksPage() {
         ) : null}
       </div>
     </main>
+    </AppShell>
   );
 }

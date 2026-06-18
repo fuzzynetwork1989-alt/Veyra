@@ -1,12 +1,11 @@
 import { VeyraClient } from "@veyra/sdk";
-
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const timeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || "300000");
+import { getSettings } from "./settings";
 
 export function createApiClient(token?: string | null) {
+  const settings = getSettings();
   return new VeyraClient({
-    baseUrl,
+    baseUrl: settings.apiUrl.replace(/\/$/, "") || "http://localhost:8000",
     apiKey: token || undefined,
-    timeout,
+    timeout: settings.apiTimeoutMs,
   });
 }

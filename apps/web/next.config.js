@@ -1,12 +1,20 @@
 const path = require("path");
 
+const isNativeBuild = process.env.NATIVE_BUILD === "1";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: "standalone",
-  experimental: {
-    outputFileTracingRoot: path.join(__dirname, "../../"),
+  output: isNativeBuild ? "export" : "standalone",
+  trailingSlash: isNativeBuild,
+  images: {
+    unoptimized: isNativeBuild,
   },
+  experimental: isNativeBuild
+    ? {}
+    : {
+        outputFileTracingRoot: path.join(__dirname, "../../"),
+      },
   transpilePackages: ["@veyra/ui", "@veyra/sdk"],
 };
 

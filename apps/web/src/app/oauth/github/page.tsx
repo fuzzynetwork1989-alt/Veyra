@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import { GitHubOAuthCallback } from "./callback";
 
-export const dynamic = "force-dynamic";
-
 export default function GitHubOAuthCallbackPage() {
   return (
     <Suspense

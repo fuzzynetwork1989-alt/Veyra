@@ -2,29 +2,47 @@
   "name": "@veyra/desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "Veyra desktop app (Electron)",
+  "main": "electron/main.cjs",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "sync:web": "node scripts/sync-web.mjs",
+    "build:web": "npm run build:native --workspace=@veyra/web",
+    "electron:dev": "cross-env VEYRA_DESKTOP_DEV=1 electron .",
+    "start:prod": "npm run sync:web && electron .",
+    "dev": "concurrently -k \"npm run dev --workspace=@veyra/web\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
+    "pack": "npm run sync:web && npx electron-builder --dir",
+    "dist": "npm run sync:web && npx electron-builder",
+    "dist:win": "npm run sync:web && npx electron-builder --win",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "next": "^14.1.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "@veyra/ui": "*",
-    "@veyra/sdk": "*"
+  "build": {
+    "appId": "com.veyra.desktop",
+    "productName": "Veyra",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "www/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "Veyra-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "28.3.3",
+    "electron-builder": "^24.9.1",
     "typescript": "^5.3.0",
-    "tailwindcss": "^3.4.0",
-    "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0",
-    "eslint": "^8.56.0",
-    "eslint-config-next": "^14.1.0"
+    "wait-on": "^7.2.0"
   }
 }
