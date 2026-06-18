@@ -7,8 +7,8 @@
   "scripts": {
     "sync:web": "node scripts/sync-web.mjs",
     "build:web": "npm run build:native --workspace=@veyra/web",
-    "electron:dev": "cross-env VEYRA_DESKTOP_DEV=1 npx electron .",
-    "start:prod": "npm run sync:web && npx electron .",
+    "electron:dev": "cross-env VEYRA_DESKTOP_DEV=1 node ../../node_modules/electron/cli.js .",
+    "start:prod": "npm run sync:web && node ../../node_modules/electron/cli.js .",
     "dev": "concurrently -k \"npm run dev --workspace=@veyra/web\" \"wait-on http://localhost:3000 && npm run electron:dev\"",
     "pack": "npm run sync:web && npx electron-builder --dir",
     "dist": "npm run sync:web && npx electron-builder",
@@ -27,7 +27,9 @@
       "package.json"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "artifactName": "Veyra-Setup-${version}.exe"
     },
     "nsis": {
@@ -38,10 +40,11 @@
     }
   },
   "devDependencies": {
+    "7zip-bin": "^5.2.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "28.3.3",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^24.13.3",
     "typescript": "^5.3.0",
     "wait-on": "^7.2.0"
   }

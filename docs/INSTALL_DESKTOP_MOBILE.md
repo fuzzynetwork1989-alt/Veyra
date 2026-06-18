@@ -50,11 +50,12 @@ Opens Electron loading `http://localhost:3000` with hot reload.
 ### Run desktop without installer (quick)
 
 ```bash
+npm install
 npm run build:native
 npm run start:prod --workspace=@veyra/desktop
 ```
 
-Launches Electron with the bundled static web UI.
+Launches Electron with the bundled static web UI. Run `npm install` first so the `electron` binary is available (do not rely on `npx` to download it on first launch).
 
 ### Production installer
 
