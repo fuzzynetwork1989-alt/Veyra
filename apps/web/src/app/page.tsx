@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Button } from "@veyra/ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@veyra/ui";
+import { AppShell } from "@/components/app-shell";
 
 export default function Home() {
   return (
+    <AppShell>
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
@@ -59,12 +61,19 @@ export default function Home() {
           </Card>
         </div>
 
-        <div className="text-center mt-12">
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
-            <Link href="/login">Get Started</Link>
+            <Link href="/chat">Open Chat</Link>
+          </Button>
+          <Button size="lg" variant="outline" asChild>
+            <Link href="/tasks">View Tasks</Link>
+          </Button>
+          <Button size="lg" variant="outline" asChild>
+            <Link href="/settings">Settings</Link>
           </Button>
         </div>
       </div>
     </main>
+    </AppShell>
   );
 }

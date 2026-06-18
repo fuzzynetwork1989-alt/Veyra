@@ -59,13 +59,26 @@ Launches Electron with the bundled static web UI. Run `npm install` first so the
 
 ### Production installer
 
+Close any running Veyra/Electron windows first (they lock files during packaging).
+
 ```bash
+npm install
 npm run desktop:dist
 ```
 
-Output: `apps/desktop/dist/Veyra-Setup-0.1.0.exe`
+Outputs:
 
-If `electron-builder` fails with a `7zip-bin` error, run `npm install` at the repo root and retry, or use `start:prod` above.
+| Artifact | Path |
+|----------|------|
+| NSIS installer | `apps/desktop/dist/Veyra-Setup-0.1.0.exe` (~75 MB) |
+| Unpacked app | `apps/desktop/dist/win-unpacked/Veyra.exe` |
+
+If `electron-builder` fails with a `7zip-bin` error, run `npm install` at the repo root and retry. You can always run the unpacked build:
+
+```bash
+npm run pack --workspace=@veyra/desktop
+apps/desktop/dist/win-unpacked/Veyra.exe
+```
 
 ### Install steps
 
@@ -100,6 +113,14 @@ cd ../..
 ```
 
 ### Build debug APK
+
+Requires Android Studio (JDK 17 + SDK 34). On Windows, use the helper script:
+
+```powershell
+.\scripts\setup-android.ps1
+```
+
+Or manually:
 
 ```bash
 npm run mobile:apk
