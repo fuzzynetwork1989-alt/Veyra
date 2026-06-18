@@ -2,11 +2,15 @@
 node_modules/
 .pnp
 .pnp.js
+.pnpm-store/
+ylsr-cache/
 
 # Testing
 coverage/
 *.lcov
 .nyc_output
+.pytest_cache/
+.tox/
 
 # Next.js
 .next/
@@ -20,26 +24,24 @@ next-env.d.ts
 
 # Misc
 .DS_Store
+Thumbs.db
 *.pem
+
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.local
 
 # Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local env files
-.env*.local
-
 # Vercel
 .vercel
-
-# TypeScript
-*.tsbuildinfo
 
 # Turbo
 .turbo
@@ -66,5 +68,22 @@ __pycache__/
 *$py.class
 *.so
 .Python
+pip-log.txt
+pip-delete-this-directory.txt
 venv/
 ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Documentation build
+docs/_build/
+
+# Temporary files
+*.tmp
+*.bak
+temp/
+
+# Runtime / local tooling
+terminals/
+mcps/
