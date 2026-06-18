@@ -83,19 +83,56 @@ export default function ChatPage() {
     const outgoing = input.trim();
     setInput("");
 
+    const userMessage: ChatHistoryMessage = {
+      id: `local-user-${Date.now()}`,
+      role: "user",
+      content: outgoing,
+      created_at: new Date().toISOString(),
+    };
+    const assistantId = `local-assistant-${Date.now()}`;
+    const assistantMessage: ChatHistoryMessage = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      created_at: new Date().toISOString(),
+      model: "streaming",
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+
     try {
-      const response = await client.chat(outgoing, {
+      const result = await client.chatStream(outgoing, {
         sessionId: sessionId || undefined,
         projectId: projectId || undefined,
         useRag,
+        onToken: (tokenChunk) => {
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantId
+                ? { ...message, content: message.content + tokenChunk }
+                : message
+            )
+          );
+        },
       });
-      setSessionId(response.session_id);
-      setStoredSessionId(response.session_id);
-      const history = await client.getChatHistory(response.session_id);
-      setMessages(history.messages);
+
+      setSessionId(result.session_id);
+      setStoredSessionId(result.session_id);
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                model: result.model,
+                latency_ms: result.latency_ms,
+              }
+            : message
+        )
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
       setInput(outgoing);
+      setMessages((prev) => prev.filter((message) => message.id !== assistantId));
     } finally {
       setLoading(false);
     }

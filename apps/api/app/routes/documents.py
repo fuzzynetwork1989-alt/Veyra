@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.rate_limit import enforce_rate_limit
-from app.retrieval_service import get_project_for_user, list_documents, store_document
+from app.retrieval_service import get_project_for_user, list_documents, store_document_async
 from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -32,7 +32,7 @@ async def upload_document(
             detail="Only UTF-8 text files are supported",
         ) from exc
 
-    document = store_document(
+    document = await store_document_async(
         user_id=current_user["user_id"],
         project_id=project_id,
         filename=file.filename or "upload.txt",

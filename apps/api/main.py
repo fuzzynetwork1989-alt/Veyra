@@ -10,7 +10,7 @@ from app.health import full_health
 from app.middleware import RequestLoggingMiddleware
 from app.migrate import run_migrations
 from app.redis_client import close_redis, init_redis
-from app.routes import auth, chat, documents, memory, projects, tasks
+from app.routes import admin, auth, chat, documents, memory, projects, tasks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,6 +65,7 @@ app.include_router(chat.router)
 app.include_router(tasks.router)
 app.include_router(memory.router)
 app.include_router(documents.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

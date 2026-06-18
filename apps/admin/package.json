@@ -13,7 +13,8 @@
     "next": "^14.1.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "@veyra/ui": "*"
+    "@veyra/ui": "*",
+    "@veyra/sdk": "*"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

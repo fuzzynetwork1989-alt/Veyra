@@ -17,6 +17,10 @@ from app.redis_client import close_redis, init_redis
 class ChatIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ["MOCK_LLM"] = "1"
+        from app.config import get_settings
+
+        get_settings.cache_clear()
         database_url = os.getenv(
             "DATABASE_URL",
             "postgresql://veyra:veyra_password_change_this@localhost:5432/veyra",
@@ -54,6 +58,7 @@ class ChatIntegrationTests(unittest.TestCase):
         self.assertEqual(first.status_code, 200)
         first_body = first.json()
         self.assertTrue(first_body["response"])
+        self.assertEqual(first_body["model"], "veyra-mock")
         session_id = first_body["session_id"]
 
         second = self.client.post(
@@ -74,6 +79,21 @@ class ChatIntegrationTests(unittest.TestCase):
         roles = [message["role"] for message in history_body["messages"]]
         self.assertIn("user", roles)
         self.assertIn("assistant", roles)
+
+    def test_chat_stream_returns_sse(self):
+        token = self._register_and_login()
+        headers = {"Authorization": f"Bearer {token}"}
+
+        with self.client.stream(
+            "POST",
+            "/chat/stream",
+            headers=headers,
+            json={"message": "Stream hello"},
+        ) as response:
+            self.assertEqual(response.status_code, 200)
+            body = "".join(response.iter_text())
+            self.assertIn("event: token", body)
+            self.assertIn("event: done", body)
 
 
 if __name__ == "__main__":

@@ -84,6 +84,125 @@ export class VeyraClient {
     return response.json();
   }
 
+  async chatStream(
+    message: string,
+    options?: ChatStreamOptions
+  ): Promise<ChatStreamResult> {
+    const url = `${this.config.baseUrl}/chat/stream`;
+    const timeout = options?.timeoutMs ?? this.config.timeout;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.authHeaders(),
+      },
+      body: JSON.stringify({
+        message,
+        session_id: options?.sessionId,
+        project_id: options?.projectId,
+        max_tokens: options?.maxTokens,
+        temperature: options?.temperature,
+        quality_mode: options?.qualityMode,
+        use_rag: options?.useRag,
+        use_agents: options?.useAgents,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Veyra API error: ${response.status} ${response.statusText} ${errorBody}`);
+    }
+
+    if (!response.body) {
+      throw new Error("Streaming response body is empty");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let sessionId = options?.sessionId || "";
+    let fullResponse = "";
+    let model = "unknown";
+    let latencyMs = 0;
+    let tokensUsed = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+
+      for (const part of parts) {
+        const lines = part.split("\n");
+        let event = "message";
+        let data = "";
+        for (const line of lines) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          if (line.startsWith("data:")) data = line.slice(5).trim();
+        }
+        if (!data) continue;
+
+        const payload = JSON.parse(data);
+        if (event === "meta") {
+          sessionId = payload.session_id || sessionId;
+          options?.onMeta?.(payload);
+        } else if (event === "token") {
+          fullResponse += payload.content;
+          options?.onToken?.(payload.content);
+        } else if (event === "done") {
+          sessionId = payload.session_id || sessionId;
+          model = payload.model || model;
+          latencyMs = payload.latency_ms || 0;
+          tokensUsed = payload.tokens_used || 0;
+        } else if (event === "error") {
+          throw new Error(payload.detail || "Stream error");
+        }
+      }
+    }
+
+    const result: ChatStreamResult = {
+      response: fullResponse,
+      session_id: sessionId,
+      model,
+      latency_ms: latencyMs,
+      tokens_used: tokensUsed,
+    };
+    options?.onDone?.(result);
+    return result;
+  }
+
+  async getAdminStats(): Promise<AdminStats> {
+    const response = await this.request("/admin/stats", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
+  async getAdminUsers(): Promise<AdminUserSummary[]> {
+    const response = await this.request("/admin/users", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
+  async getAdminTasks(): Promise<AdminTaskSummary[]> {
+    const response = await this.request("/admin/tasks", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
   async listChatSessions(projectId?: string): Promise<ChatSessionSummary[]> {
     const params = projectId ? new URLSearchParams({ project_id: projectId }) : "";
     const response = await this.request(
@@ -243,6 +362,46 @@ export interface ChatOptions {
   useRag?: boolean;
   useAgents?: boolean;
   timeoutMs?: number;
+}
+
+export interface ChatStreamOptions extends ChatOptions {
+  onMeta?: (meta: Record<string, unknown>) => void;
+  onToken?: (token: string) => void;
+  onDone?: (result: ChatStreamResult) => void;
+}
+
+export interface ChatStreamResult {
+  response: string;
+  session_id: string;
+  model: string;
+  latency_ms: number;
+  tokens_used: number;
+}
+
+export interface AdminStats {
+  users: number;
+  tasks_running: number;
+  tasks_total: number;
+  usage_24h: { tokens: number; events: number };
+  health: Record<string, unknown>;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+  tokens_24h: number;
+}
+
+export interface AdminTaskSummary {
+  id: string;
+  description: string;
+  status: string;
+  priority: string;
+  user_email: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ChatResponse {

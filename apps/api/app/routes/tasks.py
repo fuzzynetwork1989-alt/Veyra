@@ -10,6 +10,7 @@ from app.rate_limit import enforce_rate_limit
 from app.routes.auth import get_current_user
 from app.retrieval_service import get_project_for_user
 from app.task_queue import enqueue_task
+from app.usage import check_usage_quota, record_usage
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -33,6 +34,7 @@ class TaskResponse(BaseModel):
 @router.post("/execute", response_model=TaskResponse, status_code=status.HTTP_202_ACCEPTED)
 async def execute_task(request: TaskRequest, current_user: dict = Depends(get_current_user)):
     enforce_rate_limit(f"tasks:{current_user['user_id']}", limit=30, window_seconds=60)
+    check_usage_quota(current_user["user_id"], event_type="task")
 
     if request.project_id and not get_project_for_user(request.project_id, current_user["user_id"]):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
@@ -61,6 +63,12 @@ async def execute_task(request: TaskRequest, current_user: dict = Depends(get_cu
             "context": request.context,
             "priority": request.priority,
         }
+    )
+
+    record_usage(
+        user_id=current_user["user_id"],
+        event_type="task",
+        metadata={"task_id": task_id, "project_id": request.project_id},
     )
 
     return TaskResponse(

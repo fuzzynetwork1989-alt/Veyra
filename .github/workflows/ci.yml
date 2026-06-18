@@ -9,39 +9,39 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         node-version: [18.x]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run typecheck
         run: npm run typecheck
-      
+
       - name: Run lint
         run: npm run lint
-      
+
       - name: Build packages
         run: npm run build
 
   test-api:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: veyra
           POSTGRES_PASSWORD: veyra_test
@@ -53,7 +53,7 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
+
       redis:
         image: redis:7-alpine
         options: >-
@@ -63,25 +63,25 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install Python dependencies
         working-directory: ./apps/api
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      
+
       - name: Run API unit tests
         working-directory: ./apps/api
-        run: python -m unittest tests.test_auth -v
+        run: python -m unittest tests.test_auth tests.test_usage -v
         env:
           DATABASE_URL: postgresql://veyra:veyra_test@localhost:5432/veyra_test
           REDIS_URL: redis://localhost:6379
@@ -91,6 +91,26 @@ jobs:
         run: python -m unittest tests.test_auth_integration tests.test_chat_integration -v
         env:
           RUN_INTEGRATION_TESTS: "1"
+          MOCK_LLM: "1"
           DATABASE_URL: postgresql://veyra:veyra_test@localhost:5432/veyra_test
           REDIS_URL: redis://localhost:6379
           MIGRATIONS_DIR: ../../migrations
+
+  test-worker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Worker smoke import
+        run: npx tsx -e "import('./apps/worker/src/tools.ts').then(m => { if (m.builtinTools.length < 6) throw new Error('missing tools'); console.log('worker tools ok', m.builtinTools.length); })"

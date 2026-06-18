@@ -13,7 +13,13 @@ class Settings(BaseSettings):
     openai_api_key: str = "lm-studio"
     openai_base_url: str = "http://127.0.0.1:1234/v1"
     openai_model: str = ""
+    openai_embedding_model: str = ""
+    embedding_dimensions: int = 768
     llm_timeout_seconds: int = 600
+    daily_token_quota: int = 100_000
+    daily_chat_quota: int = 500
+    daily_task_quota: int = 100
+    mock_llm: bool = False
 
 
 @lru_cache

@@ -42,8 +42,8 @@ async function processTask(payload: QueueTask) {
       task,
       executionResults: [],
       verificationResults: [],
-      memory: {},
-      retrieval: {},
+      memory: { task: payload.description },
+      retrieval: { projectId: payload.projectId },
     });
 
     await updateTaskStatus(payload.id, "completed", {

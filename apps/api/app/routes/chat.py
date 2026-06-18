@@ -1,11 +1,13 @@
+import json
 import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.chat_sessions import ensure_chat_session, list_chat_sessions
-from app.llm import generate_chat_response
+from app.llm import generate_chat_response, stream_chat_response
 from app.rate_limit import enforce_rate_limit
 from app.retrieval_service import get_project_for_user, retrieve_documents
 from app.routes.auth import get_current_user
@@ -15,7 +17,7 @@ from app.session_memory import (
     get_recent_messages_for_prompt,
     get_session_owner,
 )
-from app.usage import record_usage
+from app.usage import check_usage_quota, record_usage
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -63,10 +65,7 @@ class ChatSessionSummary(BaseModel):
     updated_at: str
 
 
-@router.post("/", response_model=ChatResponse)
-async def chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
-    enforce_rate_limit(f"chat:{current_user['user_id']}", limit=60, window_seconds=60)
-
+async def _prepare_chat_context(request: ChatRequest, current_user: dict) -> tuple[str, str, str, list, str | None, list | None]:
     session_id = request.session_id or str(uuid.uuid4())
     user_id = current_user["user_id"]
 
@@ -89,7 +88,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
     augmented_message = request.message
 
     if request.use_rag and request.project_id:
-        retrieved_docs = retrieve_documents(
+        retrieved_docs = await retrieve_documents(
             project_id=request.project_id,
             query=request.message,
             top_k=5,
@@ -100,6 +99,89 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
                 f"Use the following project context when answering.\n\n{context_blocks}\n\n"
                 f"User question: {request.message}"
             )
+
+    return session_id, user_id, augmented_message, history, request.project_id, retrieved_docs
+
+
+@router.post("/stream")
+async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_current_user)):
+    enforce_rate_limit(f"chat:{current_user['user_id']}", limit=60, window_seconds=60)
+    check_usage_quota(current_user["user_id"], event_type="chat")
+
+    session_id, user_id, augmented_message, history, project_id, retrieved_docs = await _prepare_chat_context(
+        request, current_user
+    )
+
+    started = time.perf_counter()
+
+    async def event_generator():
+        full_response = ""
+        model = "unknown"
+        tokens_used = 0
+
+        yield f"event: meta\ndata: {json.dumps({'session_id': session_id, 'retrieved_docs': retrieved_docs})}\n\n"
+
+        try:
+            async for chunk in stream_chat_response(
+                message=augmented_message,
+                history=history,
+                temperature=request.temperature or 0.7,
+                max_tokens=request.max_tokens or 1024,
+            ):
+                if chunk["type"] == "token":
+                    full_response += chunk["content"]
+                    yield f"event: token\ndata: {json.dumps({'content': chunk['content']})}\n\n"
+                elif chunk["type"] == "done":
+                    model = chunk.get("model", model)
+                    tokens_used = chunk.get("tokens_used", tokens_used)
+        except Exception as exc:
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+            return
+
+        latency_ms = int((time.perf_counter() - started) * 1000)
+
+        try:
+            add_message(session_id=session_id, user_id=user_id, role="user", content=request.message)
+            add_message(
+                session_id=session_id,
+                user_id=user_id,
+                role="assistant",
+                content=full_response,
+                metadata={"model": model, "latency_ms": latency_ms},
+            )
+        except PermissionError as exc:
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+            return
+
+        record_usage(
+            user_id=user_id,
+            event_type="chat",
+            tokens_used=tokens_used,
+            metadata={
+                "session_id": session_id,
+                "project_id": project_id,
+                "model": model,
+                "latency_ms": latency_ms,
+                "streamed": True,
+            },
+        )
+
+        yield (
+            "event: done\n"
+            f"data: {json.dumps({'session_id': session_id, 'model': model, 'latency_ms': latency_ms, 'tokens_used': tokens_used})}\n\n"
+        )
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/", response_model=ChatResponse)
+async def chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
+    enforce_rate_limit(f"chat:{current_user['user_id']}", limit=60, window_seconds=60)
+    check_usage_quota(current_user["user_id"], event_type="chat")
+
+    session_id, user_id, augmented_message, history, project_id, retrieved_docs = await _prepare_chat_context(
+        request, current_user
+    )
 
     started = time.perf_counter()
     try:
@@ -135,7 +217,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         tokens_used=llm_result["tokens_used"],
         metadata={
             "session_id": session_id,
-            "project_id": request.project_id,
+            "project_id": project_id,
             "model": llm_result["model"],
             "latency_ms": latency_ms,
         },
@@ -152,7 +234,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             "request_id": str(uuid.uuid4()),
             "user_id": user_id,
             "session_id": session_id,
-            "project_id": request.project_id,
+            "project_id": project_id,
             "quality_mode": request.quality_mode,
             "use_rag": request.use_rag,
             "use_agents": request.use_agents,
