@@ -99,6 +99,42 @@ services:
     depends_on:
       - api
 
+  desktop:
+    build:
+      context: ./apps/desktop
+      dockerfile: Dockerfile
+    container_name: veyra-desktop
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://veyra:veyra_password_change_this@postgres:5432/veyra
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mobile:
+    build:
+      context: ./apps/mobile
+      dockerfile: Dockerfile
+    container_name: veyra-mobile
+    restart: unless-stopped
+    ports:
+      - "3004:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://veyra:veyra_password_change_this@postgres:5432/veyra
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   prometheus:
     image: prom/prometheus:latest
     container_name: veyra-prometheus
