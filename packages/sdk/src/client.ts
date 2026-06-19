@@ -207,6 +207,8 @@ export class VeyraClient {
         if (event === "meta") {
           sessionId = payload.session_id || sessionId;
           options?.onMeta?.(payload);
+        } else if (event === "thinking") {
+          options?.onThinking?.(payload as ThinkingStepPayload);
         } else if (event === "token") {
           fullResponse += payload.content;
           options?.onToken?.(payload.content);
@@ -439,8 +441,15 @@ export interface ChatOptions {
   timeoutMs?: number;
 }
 
+export interface ThinkingStepPayload {
+  phase: string;
+  label: string;
+  detail?: string;
+}
+
 export interface ChatStreamOptions extends ChatOptions {
   onMeta?: (meta: Record<string, unknown>) => void;
+  onThinking?: (step: ThinkingStepPayload) => void;
   onToken?: (token: string) => void;
   onDone?: (result: ChatStreamResult) => void;
 }

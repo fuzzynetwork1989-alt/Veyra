@@ -7,6 +7,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: isNativeBuild ? "export" : "standalone",
   trailingSlash: isNativeBuild,
+  assetPrefix: isNativeBuild ? "./" : undefined,
   images: {
     unoptimized: isNativeBuild,
   },

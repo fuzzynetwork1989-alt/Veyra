@@ -122,6 +122,48 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
 
         yield f"event: meta\ndata: {json.dumps({'session_id': session_id, 'retrieved_docs': retrieved_docs})}\n\n"
 
+        thinking_steps = [
+            {
+                "phase": "analyze",
+                "label": "Parsing intent and constraints",
+                "detail": f"Quality: {request.quality_mode or 'balanced'}",
+            },
+        ]
+        if request.use_rag and request.project_id:
+            doc_count = len(retrieved_docs or [])
+            thinking_steps.append(
+                {
+                    "phase": "retrieve",
+                    "label": "Scanning project knowledge base",
+                    "detail": f"{doc_count} document chunk(s) matched",
+                }
+            )
+        if request.use_agents:
+            thinking_steps.append(
+                {
+                    "phase": "agents",
+                    "label": "Activating multi-agent orchestration",
+                    "detail": "Routing to specialized agents",
+                }
+            )
+        if request.custom_instructions:
+            thinking_steps.append(
+                {
+                    "phase": "persona",
+                    "label": "Applying custom instructions",
+                    "detail": "Merging your Veyra persona",
+                }
+            )
+        thinking_steps.append(
+            {
+                "phase": "synthesize",
+                "label": "Generating neural response",
+                "detail": "Streaming tokens",
+            }
+        )
+        for step in thinking_steps:
+            yield f"event: thinking\ndata: {json.dumps(step)}\n\n"
+
         try:
             async for chunk in stream_chat_response(
                 message=augmented_message,

@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS: VeyraSettings = {
   streamingEnabled: true,
   showModelLatency: true,
   compactMode: false,
-  theme: "system",
+  theme: "dark",
   telemetryEnabled: false,
   hapticFeedback: true,
   autoRefreshToken: true,
