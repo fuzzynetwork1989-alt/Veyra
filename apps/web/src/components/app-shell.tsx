@@ -20,14 +20,13 @@ function NavIcon({ href, label, icon, active }: NavItem & { active: boolean }) {
       title={label}
       className={cn(
         "group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200",
-        "hover:bg-white/5 active:scale-95",
         active
-          ? "bg-violet-600/90 text-white shadow-lg shadow-violet-600/25"
-          : "text-zinc-500 hover:text-zinc-200"
+          ? "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-600/30 ring-1 ring-violet-400/30"
+          : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
       )}
     >
       {icon}
-      <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-200 opacity-0 transition-opacity group-hover:opacity-100 md:block">
+      <span className="pointer-events-none absolute left-full z-50 ml-3 hidden whitespace-nowrap rounded-lg border border-white/10 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200 shadow-xl md:group-hover:block">
         {label}
       </span>
     </Link>
@@ -53,11 +52,15 @@ export function AppShell({
   return (
     <div className="veyra-mesh flex h-screen overflow-hidden bg-zinc-950 text-zinc-100">
       {showNav ? (
-        <nav className="z-20 flex w-16 shrink-0 flex-col items-center gap-2 border-r border-white/5 bg-zinc-950/80 px-2 py-4 backdrop-blur-xl">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-cyan-500 shadow-lg shadow-violet-600/20">
+        <nav className="z-20 flex w-[4.5rem] shrink-0 flex-col items-center gap-2 border-r border-white/5 bg-zinc-950/80 px-2 py-5 backdrop-blur-xl">
+          <Link
+            href="/"
+            className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-cyan-500 shadow-lg shadow-violet-600/25 transition-transform hover:scale-105"
+            title="Veyra"
+          >
             <IconSpark className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex flex-1 flex-col gap-1">
+          </Link>
+          <div className="flex flex-1 flex-col gap-1.5">
             {NAV_ITEMS.map((item) => (
               <NavIcon
                 key={item.href}

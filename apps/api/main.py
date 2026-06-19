@@ -24,6 +24,9 @@ CORS_ORIGINS = [
     "capacitor://localhost",
     "http://localhost",
     "https://localhost",
+    "veyra://app",
+    "file://",
+    "null",
 ]
 
 
@@ -51,6 +54,7 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"^(https?://.*|capacitor://.*|veyra://.*|file://.*)$",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

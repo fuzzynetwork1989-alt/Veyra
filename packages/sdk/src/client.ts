@@ -145,25 +145,36 @@ export class VeyraClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...this.authHeaders(),
-      },
-      body: JSON.stringify({
-        message,
-        session_id: options?.sessionId,
-        project_id: options?.projectId,
-        max_tokens: options?.maxTokens,
-        temperature: options?.temperature,
-        quality_mode: options?.qualityMode,
-        use_rag: options?.useRag,
-        use_agents: options?.useAgents,
-        custom_instructions: options?.customInstructions,
-      }),
-      signal: controller.signal,
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...this.authHeaders(),
+        },
+        body: JSON.stringify({
+          message,
+          session_id: options?.sessionId,
+          project_id: options?.projectId,
+          max_tokens: options?.maxTokens,
+          temperature: options?.temperature,
+          quality_mode: options?.qualityMode,
+          use_rag: options?.useRag,
+          use_agents: options?.useAgents,
+          custom_instructions: options?.customInstructions,
+        }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof TypeError) {
+        throw new Error(
+          `Failed to fetch ${url}. Ensure the Veyra API is running at ${this.config.baseUrl}.`
+        );
+      }
+      throw error;
+    }
 
     clearTimeout(timeoutId);
 
@@ -422,6 +433,11 @@ export class VeyraClient {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error(
           `Request timed out after ${Math.round(timeout / 1000)}s. Local models can be slow — try again or increase the client timeout.`
+        );
+      }
+      if (error instanceof TypeError) {
+        throw new Error(
+          `Failed to fetch ${url}. Ensure the Veyra API is running at ${this.config.baseUrl}.`
         );
       }
       throw error;
