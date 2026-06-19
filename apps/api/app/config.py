@@ -23,9 +23,11 @@ class Settings(BaseSettings):
     openai_embedding_model: str = ""
     embedding_dimensions: int = 768
     llm_timeout_seconds: int = 600
-    daily_token_quota: int = 100_000
-    daily_chat_quota: int = 500
-    daily_task_quota: int = 100
+    daily_token_quota: int = 10_000_000
+    daily_chat_quota: int = 50_000
+    daily_task_quota: int = 10_000
+    disable_quotas: bool = True
+    disable_rate_limits: bool = True
     mock_llm: bool = False
 
 

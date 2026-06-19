@@ -7,17 +7,18 @@ import { ChatHistoryMessage, ChatSessionSummary, ProjectSummary } from "@veyra/s
 import { AppShell } from "@/components/app-shell";
 import { BrainWave } from "@/components/brain-wave";
 import { IconBrain, IconPlus, IconSend, IconSpark, IconUser } from "@/components/icons";
+import { MarkdownMessage } from "@/components/markdown-message";
 import { ThinkingPanel, type ThinkingStep } from "@/components/thinking-panel";
 import { createApiClient } from "@/lib/api";
+import { ensureValidToken, logoutSession } from "@/lib/auth-session";
 import {
   clearStoredSessionId,
-  clearStoredToken,
   getStoredSessionId,
   getStoredToken,
   setStoredSessionId,
 } from "@/lib/auth";
 import { getStoredProjectId, setStoredProjectId } from "@/lib/project";
-import { getSettings } from "@/lib/settings";
+import { buildAugmentedInstructions, getSettings, subscribeSettings } from "@/lib/settings";
 
 const SUGGESTIONS = [
   "Plan a microservice architecture for my app",
@@ -28,7 +29,11 @@ const SUGGESTIONS = [
 export default function ChatPage() {
   const router = useRouter();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [compact, setCompact] = useState(() => getSettings().compactMode);
+  const [showNeuralTrace, setShowNeuralTrace] = useState(() => getSettings().showNeuralTrace);
+  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -46,14 +51,19 @@ export default function ChatPage() {
   const client = useMemo(() => createApiClient(token || undefined), [token]);
 
   useEffect(() => {
-    const storedToken = getStoredToken();
-    if (!storedToken) {
-      router.replace("/login");
-      return;
-    }
-    setToken(storedToken);
-    setSessionId(getStoredSessionId());
-    setProjectId(getStoredProjectId());
+    ensureValidToken().then((valid) => {
+      if (!valid) {
+        router.replace("/login");
+        return;
+      }
+      setToken(valid);
+      setSessionId(getStoredSessionId());
+      setProjectId(getStoredProjectId());
+    });
+    return subscribeSettings((s) => {
+      setCompact(s.compactMode);
+      setShowNeuralTrace(s.showNeuralTrace);
+    });
   }, [router]);
 
   useEffect(() => {
@@ -109,6 +119,8 @@ export default function ChatPage() {
     setError(null);
     setThinkingSteps([]);
     setInput("");
+    setLastUserMessage(outgoing);
+    abortRef.current = new AbortController();
 
     const userMessage: ChatHistoryMessage = {
       id: `local-user-${Date.now()}`,
@@ -137,7 +149,8 @@ export default function ChatPage() {
         qualityMode: prefs.qualityMode,
         temperature: prefs.temperature,
         maxTokens: prefs.maxTokens,
-        customInstructions: prefs.customInstructions || undefined,
+        customInstructions: buildAugmentedInstructions(prefs) || undefined,
+        timeoutMs: prefs.latencyBudgetMs,
       };
 
       const appendThinking = (step: ThinkingStep) => {
@@ -151,6 +164,7 @@ export default function ChatPage() {
       if (prefs.streamingEnabled) {
         const result = await client.chatStream(outgoing, {
           ...requestOptions,
+          signal: abortRef.current?.signal,
           onThinking: (step) => appendThinking(step as ThinkingStep),
           onToken: (tokenChunk) => {
             setStreaming(true);
@@ -197,13 +211,39 @@ export default function ChatPage() {
         );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      const msg = err instanceof Error ? err.message : "Failed to send message";
+      if (msg.includes("429")) {
+        setError("Rate limit reached — quotas are unlocked on local API; retry in a moment.");
+      } else {
+        setError(msg);
+      }
       setInput(outgoing);
       setMessages((prev) => prev.filter((message) => message.id !== assistantId));
     } finally {
       setLoading(false);
       setStreaming(false);
+      abortRef.current = null;
     }
+  }
+
+  function handleStop() {
+    abortRef.current?.abort();
+    setLoading(false);
+    setStreaming(false);
+  }
+
+  async function handleRegenerate() {
+    if (!lastUserMessage || loading) return;
+    setMessages((prev) => {
+      const last = [...prev];
+      if (last.length && last[last.length - 1].role === "assistant") last.pop();
+      return last;
+    });
+    await handleSubmit(undefined, lastUserMessage);
+  }
+
+  function handleCopy(text: string) {
+    void navigator.clipboard.writeText(text);
   }
 
   function handleNewSession() {
@@ -308,8 +348,8 @@ export default function ChatPage() {
               <BrainWave active={loading} className="h-5" />
               <button
                 type="button"
-                onClick={() => {
-                  clearStoredToken();
+                onClick={async () => {
+                  await logoutSession();
                   router.push("/login");
                 }}
                 className="text-xs text-zinc-500 hover:text-zinc-300"
@@ -344,7 +384,7 @@ export default function ChatPage() {
                 </div>
               </div>
             ) : (
-              <div className="mx-auto max-w-3xl space-y-6">
+              <div className={`mx-auto max-w-3xl ${compact ? "space-y-3" : "space-y-6"}`}>
                 {messages.map((message) => {
                   const isUser = message.role === "user";
                   const isStreaming =
@@ -372,7 +412,11 @@ export default function ChatPage() {
                           }`}
                         >
                           {message.content ? (
-                            <p className="whitespace-pre-wrap">{message.content}</p>
+                            isUser ? (
+                              <p className="whitespace-pre-wrap">{message.content}</p>
+                            ) : (
+                              <MarkdownMessage content={message.content} compact={compact} />
+                            )
                           ) : isStreaming ? (
                             <div className="flex items-center gap-3 text-zinc-500">
                               <BrainWave active className="h-5" />
@@ -380,12 +424,23 @@ export default function ChatPage() {
                             </div>
                           ) : null}
                         </div>
-                        {!isUser && showMeta && message.model && message.model !== "processing" ? (
-                          <p className="mt-1 text-[10px] text-zinc-600">
-                            {message.model}
-                            {message.latency_ms ? ` · ${message.latency_ms}ms` : ""}
-                          </p>
-                        ) : null}
+                        <div className={`mt-1 flex items-center gap-2 ${isUser ? "justify-end" : ""}`}>
+                          {!isUser && message.content ? (
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(message.content)}
+                              className="text-[10px] text-zinc-600 hover:text-zinc-400"
+                            >
+                              Copy
+                            </button>
+                          ) : null}
+                          {!isUser && showMeta && message.model && message.model !== "processing" ? (
+                            <span className="text-[10px] text-zinc-600">
+                              {message.model}
+                              {message.latency_ms ? ` · ${message.latency_ms}ms` : ""}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );
@@ -397,7 +452,7 @@ export default function ChatPage() {
 
           <div className="border-t border-white/5 bg-zinc-950/80 px-4 py-4 backdrop-blur-xl md:px-8">
             <div className="mx-auto max-w-3xl space-y-3">
-              <ThinkingPanel steps={thinkingSteps} active={loading} />
+              {showNeuralTrace ? <ThinkingPanel steps={thinkingSteps} active={loading} /> : null}
               {error ? (
                 <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>
               ) : null}
@@ -416,17 +471,32 @@ export default function ChatPage() {
                   disabled={loading}
                   className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
                 />
-                <Button
-                  type="submit"
-                  disabled={loading || !input.trim()}
-                  className="h-10 w-10 shrink-0 rounded-xl bg-violet-600 p-0 hover:bg-violet-500 disabled:opacity-40"
-                >
-                  <IconSend className="mx-auto h-4 w-4" />
-                </Button>
+                {loading ? (
+                  <Button
+                    type="button"
+                    onClick={handleStop}
+                    className="h-10 shrink-0 rounded-xl bg-zinc-700 px-3 text-xs hover:bg-zinc-600"
+                  >
+                    Stop
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="h-10 w-10 shrink-0 rounded-xl bg-violet-600 p-0 hover:bg-violet-500 disabled:opacity-40"
+                  >
+                    <IconSend className="mx-auto h-4 w-4" />
+                  </Button>
+                )}
               </form>
-              <p className="text-center text-[10px] text-zinc-600">
-                Veyra may take a moment with local models · Shift+Enter for new line
-              </p>
+              <div className="flex items-center justify-between text-[10px] text-zinc-600">
+                <span>Shift+Enter for new line · Markdown supported</span>
+                {lastUserMessage && !loading ? (
+                  <button type="button" onClick={() => void handleRegenerate()} className="text-violet-400 hover:text-violet-300">
+                    Regenerate last response
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

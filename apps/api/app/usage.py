@@ -28,6 +28,11 @@ def _daily_usage(user_id: str) -> dict[str, int]:
 
 
 def check_usage_quota(user_id: str, *, event_type: str, tokens: int = 0) -> None:
+    from app.config import get_settings
+
+    if get_settings().disable_quotas:
+        return
+
     limits = get_effective_quotas()
     usage = _daily_usage(user_id)
 

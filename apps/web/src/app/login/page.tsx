@@ -177,7 +177,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="h-11 w-full rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 text-sm font-medium hover:from-violet-500 hover:to-violet-400"
-              disabled={loading || apiStatus === "offline"}
+              disabled={loading}
             >
               {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
             </Button>

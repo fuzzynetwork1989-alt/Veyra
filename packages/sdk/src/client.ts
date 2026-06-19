@@ -19,6 +19,12 @@ export interface UserProfile {
   role: string;
 }
 
+export interface UserUsageSummary {
+  user_id: string;
+  daily: { tokens: number; chats: number; tasks: number };
+  limits: { tokens: number; chats: number; tasks: number };
+}
+
 export class VeyraClient {
   private config: VeyraClientConfig;
 
@@ -109,6 +115,14 @@ export class VeyraClient {
     return response.json();
   }
 
+  async getUsage(): Promise<UserUsageSummary> {
+    const response = await this.request("/auth/usage", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
   async chat(message: string, options?: ChatOptions): Promise<ChatResponse> {
     const response = await this.request(
       "/chat/",
@@ -144,6 +158,9 @@ export class VeyraClient {
     const timeout = options?.timeoutMs ?? this.config.timeout;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
+    if (options?.signal) {
+      options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
 
     let response: Response;
     try {
@@ -468,6 +485,7 @@ export interface ChatStreamOptions extends ChatOptions {
   onThinking?: (step: ThinkingStepPayload) => void;
   onToken?: (token: string) => void;
   onDone?: (result: ChatStreamResult) => void;
+  signal?: AbortSignal;
 }
 
 export interface ChatStreamResult {

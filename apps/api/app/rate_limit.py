@@ -7,6 +7,11 @@ DEFAULT_WINDOW_SECONDS = 60
 
 
 def enforce_rate_limit(key: str, limit: int = DEFAULT_LIMIT, window_seconds: int = DEFAULT_WINDOW_SECONDS) -> None:
+    from app.config import get_settings
+
+    if get_settings().disable_rate_limits:
+        return
+
     redis = get_redis()
     bucket = f"veyra:rate:{key}"
     count = redis.incr(bucket)

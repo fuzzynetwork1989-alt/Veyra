@@ -384,3 +384,10 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         email=current_user["email"],
         role=current_user["role"],
     )
+
+
+@router.get("/usage")
+async def get_usage(current_user: dict = Depends(get_current_user)):
+    from app.usage import get_user_usage_summary
+
+    return get_user_usage_summary(current_user["user_id"])

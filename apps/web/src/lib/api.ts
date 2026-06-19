@@ -1,4 +1,5 @@
 import { VeyraClient } from "@veyra/sdk";
+import { ensureValidToken } from "@/lib/auth-session";
 import { getSettings } from "./settings";
 
 export function createApiClient(token?: string | null) {
@@ -8,4 +9,10 @@ export function createApiClient(token?: string | null) {
     apiKey: token || undefined,
     timeout: settings.apiTimeoutMs,
   });
+}
+
+export async function createAuthenticatedClient(): Promise<VeyraClient | null> {
+  const token = await ensureValidToken();
+  if (!token) return null;
+  return createApiClient(token);
 }

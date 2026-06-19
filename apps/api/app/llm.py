@@ -56,10 +56,42 @@ async def _mock_stream(*, message: str) -> AsyncIterator[str]:
         yield token + " "
 
 
-def _build_system_prompt(custom_instructions: str | None = None) -> str:
+def _build_system_prompt(
+    custom_instructions: str | None = None,
+    *,
+    use_agents: bool = False,
+    quality_mode: str | None = None,
+) -> str:
+    parts = [SYSTEM_PROMPT]
+    if use_agents:
+        parts.append(
+            "You may decompose complex work into planner, builder, reviewer, and operator steps. "
+            "Show your reasoning briefly before the final answer."
+        )
+    mode = (quality_mode or "balanced").lower()
+    if mode == "fast":
+        parts.append("Respond quickly with the minimum viable answer. Skip long preambles.")
+    elif mode == "deep":
+        parts.append(
+            "Think step-by-step. Explore alternatives, risks, and verification before concluding."
+        )
     if custom_instructions and custom_instructions.strip():
-        return f"{SYSTEM_PROMPT}\n\nUser instructions:\n{custom_instructions.strip()}"
-    return SYSTEM_PROMPT
+        parts.append(f"User instructions:\n{custom_instructions.strip()}")
+    return "\n\n".join(parts)
+
+
+def apply_quality_mode(
+    quality_mode: str | None,
+    *,
+    temperature: float,
+    max_tokens: int,
+) -> tuple[float, int]:
+    mode = (quality_mode or "balanced").lower()
+    if mode == "fast":
+        return min(temperature, 0.5), max(256, int(max_tokens * 0.75))
+    if mode == "deep":
+        return max(temperature, 0.75), min(4096, int(max_tokens * 1.5))
+    return temperature, max_tokens
 
 
 async def generate_chat_response(
@@ -69,12 +101,17 @@ async def generate_chat_response(
     temperature: float = 0.7,
     max_tokens: int = 1024,
     custom_instructions: str | None = None,
+    quality_mode: str | None = None,
+    use_agents: bool = False,
 ) -> dict[str, Any]:
     settings = get_settings()
     if settings.mock_llm:
         return _mock_response(message=message, history=history)
 
-    system_prompt = _build_system_prompt(custom_instructions)
+    temperature, max_tokens = apply_quality_mode(quality_mode, temperature=temperature, max_tokens=max_tokens)
+    system_prompt = _build_system_prompt(
+        custom_instructions, use_agents=use_agents, quality_mode=quality_mode
+    )
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": message}]
 
     model_id = _resolve_model_id(
@@ -133,6 +170,8 @@ async def stream_chat_response(
     temperature: float = 0.7,
     max_tokens: int = 1024,
     custom_instructions: str | None = None,
+    quality_mode: str | None = None,
+    use_agents: bool = False,
 ) -> AsyncIterator[dict[str, Any]]:
     settings = get_settings()
     if settings.mock_llm:
@@ -141,7 +180,10 @@ async def stream_chat_response(
         yield {"type": "done", "model": "veyra-mock", "tokens_used": 12}
         return
 
-    system_prompt = _build_system_prompt(custom_instructions)
+    temperature, max_tokens = apply_quality_mode(quality_mode, temperature=temperature, max_tokens=max_tokens)
+    system_prompt = _build_system_prompt(
+        custom_instructions, use_agents=use_agents, quality_mode=quality_mode
+    )
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": message}]
     model_id = _resolve_model_id(
         settings.openai_base_url,

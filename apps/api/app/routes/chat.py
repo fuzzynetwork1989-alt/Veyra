@@ -26,12 +26,12 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=8000)
     session_id: str | None = None
     project_id: str | None = None
-    max_tokens: int | None = Field(default=1024, ge=64, le=4096)
+    max_tokens: int | None = Field(default=2048, ge=64, le=8192)
     temperature: float | None = Field(default=0.7, ge=0.0, le=2.0)
     quality_mode: str | None = None
     use_rag: bool = False
     use_agents: bool = False
-    custom_instructions: str | None = Field(default=None, max_length=4000)
+    custom_instructions: str | None = Field(default=None, max_length=7500)
 
 
 class ChatResponse(BaseModel):
@@ -171,6 +171,8 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
                 temperature=request.temperature or 0.7,
                 max_tokens=request.max_tokens or 1024,
                 custom_instructions=request.custom_instructions,
+                quality_mode=request.quality_mode,
+                use_agents=request.use_agents,
             ):
                 if chunk["type"] == "token":
                     full_response += chunk["content"]
@@ -235,6 +237,8 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             temperature=request.temperature or 0.7,
             max_tokens=request.max_tokens or 1024,
             custom_instructions=request.custom_instructions,
+            quality_mode=request.quality_mode,
+            use_agents=request.use_agents,
         )
     except Exception as exc:
         raise HTTPException(
