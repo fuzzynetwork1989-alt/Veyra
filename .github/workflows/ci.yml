@@ -81,14 +81,15 @@ jobs:
 
       - name: Run API unit tests
         working-directory: ./apps/api
-        run: python -m unittest tests.test_auth tests.test_usage -v
+        run: python -m unittest tests.test_auth tests.test_usage tests.test_model_router tests.test_graph tests.test_evals -v
         env:
+          MOCK_LLM: "1"
           DATABASE_URL: postgresql://veyra:veyra_test@localhost:5432/veyra_test
           REDIS_URL: redis://localhost:6379
 
       - name: Run API integration tests
         working-directory: ./apps/api
-        run: python -m unittest tests.test_auth_integration tests.test_chat_integration tests.test_tasks_integration -v
+        run: python -m unittest tests.test_auth_integration tests.test_chat_integration tests.test_tasks_integration tests.test_world_model_integration tests.test_graph_integration -v
         env:
           RUN_INTEGRATION_TESTS: "1"
           MOCK_LLM: "1"
