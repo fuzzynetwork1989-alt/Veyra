@@ -76,6 +76,7 @@ __pycache__/
 pip-log.txt
 pip-delete-this-directory.txt
 venv/
+.venv/
 ENV/
 
 # Jupyter Notebook

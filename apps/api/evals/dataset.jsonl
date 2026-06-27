@@ -1,0 +1,5 @@
+{"id": "plan-rest-api", "goal": "Design a REST API for a todo list application", "expected_keywords": ["api", "todo"], "min_score": 0.5}
+{"id": "debug-memory-leak", "goal": "Investigate and fix a memory leak in a Node.js service", "expected_keywords": ["memory", "node"], "min_score": 0.5}
+{"id": "ci-pipeline", "goal": "Set up a CI pipeline that runs tests and lint on every pull request", "expected_keywords": ["ci", "pipeline", "tests"], "min_score": 0.5}
+{"id": "db-migration", "goal": "Write a database migration to add a users table with email and password", "expected_keywords": ["database", "migration", "users"], "min_score": 0.5}
+{"id": "vector-search", "goal": "Implement semantic vector search over project documents", "expected_keywords": ["vector", "search", "documents"], "min_score": 0.5}
