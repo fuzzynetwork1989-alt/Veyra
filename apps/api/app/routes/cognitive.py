@@ -1,8 +1,9 @@
 """Cognitive OS API — kernel state, dreaming, and trace inspection."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.config import get_settings
 from app.cognitive.dream import run_dream_cycle
 from app.cognitive.modes import COGNITIVE_MODES
 from app.cognitive_memory import get_cognitive_state, list_trace_events
@@ -18,6 +19,10 @@ class DreamResponse(BaseModel):
     status: str
     insights_preview: str | None = None
     error: str | None = None
+
+
+class InternalDreamRequest(BaseModel):
+    user_id: str = Field(min_length=1)
 
 
 class CognitiveStateResponse(BaseModel):
@@ -51,4 +56,16 @@ async def cognitive_trace(
 async def trigger_dream(current_user: dict = Depends(get_current_user)):
     enforce_rate_limit(f"dream:{current_user['user_id']}", limit=3, window_seconds=3600)
     result = await run_dream_cycle(current_user["user_id"])
+    return DreamResponse(**result)
+
+
+@router.post("/dream/internal", response_model=DreamResponse)
+async def trigger_dream_internal(
+    request: InternalDreamRequest,
+    x_worker_secret: str = Header(default=""),
+):
+    settings = get_settings()
+    if not x_worker_secret or x_worker_secret != settings.worker_secret:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid worker secret")
+    result = await run_dream_cycle(request.user_id)
     return DreamResponse(**result)

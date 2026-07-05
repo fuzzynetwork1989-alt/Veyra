@@ -143,6 +143,7 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
                 quality_mode=request.quality_mode,
                 custom_instructions=request.custom_instructions,
                 use_rag=request.use_rag,
+                project_id=project_id,
                 temperature=request.temperature or 0.7,
                 max_tokens=request.max_tokens or 2048,
             ):
@@ -215,6 +216,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             quality_mode=request.quality_mode,
             custom_instructions=request.custom_instructions,
             use_rag=request.use_rag,
+            project_id=project_id,
             temperature=request.temperature or 0.7,
             max_tokens=request.max_tokens or 2048,
         )

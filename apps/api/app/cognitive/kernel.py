@@ -13,6 +13,7 @@ from app.cognitive.modes import get_mode
 from app.cognitive.prompts import INTEGRATOR_PROMPT, VEYRA_META_BRAIN
 from app.cognitive.selves import format_selves_block, run_inner_chorus
 from app.cognitive.temporal import load_temporal_layers
+from app.cognitive.world_context import ensure_default_agents, load_world_context
 from app.cognitive_memory import record_trace_event
 
 
@@ -33,6 +34,7 @@ class CognitiveResult:
     faculties: list[dict[str, Any]] = field(default_factory=list)
     inner_voices: list[dict[str, Any]] = field(default_factory=list)
     temporal: dict[str, str] = field(default_factory=dict)
+    world_model: dict[str, Any] = field(default_factory=dict)
     mode: str = "inner_voice"
 
 
@@ -50,6 +52,7 @@ class CognitiveKernel:
         quality_mode: str | None = None,
         custom_instructions: str | None = None,
         use_rag: bool = False,
+        project_id: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> CognitiveResult:
@@ -76,6 +79,22 @@ class CognitiveKernel:
         temporal = load_temporal_layers(user_id=user_id, history=history, message=message)
         steps.append(ThinkingStep("temporal", "Loading hierarchical time mind", "Micro · Meso · Macro layers"))
         self._trace(user_id, session_id, steps[-1])
+
+        try:
+            ensure_default_agents(user_id, project_id)
+            world = load_world_context(user_id, project_id)
+        except Exception:
+            world = {"agents": [], "tools": [], "relations": [], "summary": "World model unavailable"}
+        agent_count = len(world.get("agents") or [])
+        tool_count = len(world.get("tools") or [])
+        steps.append(
+            ThinkingStep(
+                "world_model",
+                "Loading world model graph",
+                f"{agent_count} agent(s) · {tool_count} tool(s)",
+            )
+        )
+        self._trace(user_id, session_id, steps[-1], metadata={"agents": agent_count, "tools": tool_count})
 
         ethics = await run_ethics_gate(message=message, micro_context=temporal["micro"], quality_mode=quality_mode)
         total_tokens += 64
@@ -115,6 +134,7 @@ class CognitiveKernel:
             meso=temporal["meso"][:400],
             macro=temporal["macro"][:400],
             faculties=faculties_summary(faculties),
+            world_model=world.get("summary", "")[:800],
         )
 
         system_parts = [VEYRA_META_BRAIN, f"[MODE: {mode['label']}]\n{mode['description']}"]
@@ -150,6 +170,7 @@ class CognitiveKernel:
             faculties=faculties,
             inner_voices=voices,
             temporal=temporal,
+            world_model=world,
             mode=cognitive_mode,
         )
 
@@ -164,6 +185,7 @@ class CognitiveKernel:
         quality_mode: str | None = None,
         custom_instructions: str | None = None,
         use_rag: bool = False,
+        project_id: str | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> AsyncIterator[dict[str, Any]]:
@@ -189,6 +211,7 @@ class CognitiveKernel:
             quality_mode=quality_mode,
             custom_instructions=custom_instructions,
             use_rag=use_rag,
+            project_id=project_id,
             temperature=temperature,
             max_tokens=max_tokens,
         )

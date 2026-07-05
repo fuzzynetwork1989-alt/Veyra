@@ -14,6 +14,34 @@ SYSTEM_PROMPT = (
 
 EMBEDDING_MODEL_MARKERS = ("embed", "embedding")
 
+_llm_probe_cache: dict[str, bool] = {"reachable": False, "checked": False}
+
+
+def _probe_llm() -> bool:
+    settings = get_settings()
+    try:
+        with httpx.Client(timeout=3.0) as client:
+            response = client.get(
+                f"{settings.openai_base_url.rstrip('/')}/models",
+                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+            )
+            response.raise_for_status()
+            return True
+    except Exception:
+        return False
+
+
+def _should_use_mock() -> bool:
+    settings = get_settings()
+    if settings.mock_llm:
+        return True
+    if settings.auto_mock_llm:
+        if not _llm_probe_cache["checked"]:
+            _llm_probe_cache["reachable"] = _probe_llm()
+            _llm_probe_cache["checked"] = True
+        return not _llm_probe_cache["reachable"]
+    return False
+
 
 @lru_cache
 def _resolve_model_id(base_url: str, api_key: str, configured_model: str) -> str:
@@ -104,10 +132,10 @@ async def generate_chat_response(
     quality_mode: str | None = None,
     use_agents: bool = False,
 ) -> dict[str, Any]:
-    settings = get_settings()
-    if settings.mock_llm:
+    if _should_use_mock():
         return _mock_response(message=message, history=history)
 
+    settings = get_settings()
     temperature, max_tokens = apply_quality_mode(quality_mode, temperature=temperature, max_tokens=max_tokens)
     system_prompt = _build_system_prompt(
         custom_instructions, use_agents=use_agents, quality_mode=quality_mode
@@ -173,13 +201,13 @@ async def stream_chat_response(
     quality_mode: str | None = None,
     use_agents: bool = False,
 ) -> AsyncIterator[dict[str, Any]]:
-    settings = get_settings()
-    if settings.mock_llm:
+    if _should_use_mock():
         async for token in _mock_stream(message=message):
             yield {"type": "token", "content": token}
         yield {"type": "done", "model": "veyra-mock", "tokens_used": 12}
         return
 
+    settings = get_settings()
     temperature, max_tokens = apply_quality_mode(quality_mode, temperature=temperature, max_tokens=max_tokens)
     system_prompt = _build_system_prompt(
         custom_instructions, use_agents=use_agents, quality_mode=quality_mode

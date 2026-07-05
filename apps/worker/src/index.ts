@@ -1,7 +1,8 @@
 import "./env";
 import Redis from "ioredis";
 import { AgentRuntime, Task, TaskStatus } from "@veyra/agent-runtime";
-import { updateTaskStatus, closeDatabase } from "./db";
+import { updateTaskStatus, closeDatabase, listActiveUserIds } from "./db";
+import { startDreamConsumer, startDreamSweeper } from "./dream";
 import { builtinTools } from "./tools";
 import { startMetricsServer, tasksProcessed, taskDuration } from "./metrics";
 
@@ -69,6 +70,11 @@ async function processTask(payload: QueueTask) {
 async function workerLoop() {
   console.log("Veyra Worker started");
   startMetricsServer(Number(process.env.METRICS_PORT || "8001"));
+
+  const apiBase = process.env.API_BASE_URL || "http://127.0.0.1:8000";
+  const workerSecret = process.env.WORKER_SECRET || "veyra-worker-secret-change-this";
+  startDreamConsumer(redis, apiBase, workerSecret);
+  startDreamSweeper(redis, () => listActiveUserIds(Number(process.env.DREAM_ACTIVE_DAYS || "7")));
 
   while (true) {
     try {

@@ -27,6 +27,19 @@ export async function updateTaskStatus(
   );
 }
 
+export async function listActiveUserIds(days = 7): Promise<string[]> {
+  const result = await pool.query(
+    `
+      SELECT DISTINCT cs.user_id::text AS user_id
+      FROM chat_sessions cs
+      WHERE cs.updated_at >= NOW() - ($1::text || ' days')::interval
+      ORDER BY user_id
+    `,
+    [String(days)]
+  );
+  return result.rows.map((row: { user_id: string }) => row.user_id);
+}
+
 export async function closeDatabase(): Promise<void> {
   await pool.end();
 }

@@ -22,6 +22,13 @@ export function startMetricsServer(port = 8001): void {
     res.setHeader("Content-Type", register.contentType);
     res.end(await register.metrics());
   });
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.warn(`Worker metrics port ${port} in use — skipping metrics server`);
+      return;
+    }
+    throw err;
+  });
   server.listen(port, () => {
     console.log(`Worker metrics on :${port}/metrics`);
   });

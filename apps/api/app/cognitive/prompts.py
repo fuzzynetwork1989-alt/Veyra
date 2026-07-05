@@ -87,4 +87,7 @@ Temporal context:
 - Macro (life themes): {macro}
 Active faculties: {faculties}
 
+World model (durable agents, tools, relations):
+{world_model}
+
 Synthesize a single unified answer. Follow the output style from your system prompt."""

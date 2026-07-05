@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     disable_quotas: bool = True
     disable_rate_limits: bool = True
     mock_llm: bool = False
+    auto_mock_llm: bool = True
+    worker_secret: str = "veyra-worker-secret-change-this"
 
 
 @lru_cache
