@@ -12,6 +12,7 @@ import { logoutSession } from "@/lib/auth-session";
 import { getStoredToken } from "@/lib/auth";
 import {
   CUSTOM_INSTRUCTIONS_MAX,
+  CognitiveMode,
   DEFAULT_SETTINGS,
   MemoryMode,
   QualityMode,
@@ -246,6 +247,28 @@ export default function SettingsPage() {
               <SettingRow label="Multi-agent mode" description="Planner + builder + reviewer orchestration">
                 <Switch checked={settings.defaultUseAgents} onCheckedChange={(v) => patch({ defaultUseAgents: v })} aria-label="Agents" />
               </SettingRow>
+              <SettingRow label="Cognitive OS" description="Polyphonic inner selves, temporal mind, ethics gate">
+                <Switch
+                  checked={settings.cognitiveOsEnabled}
+                  onCheckedChange={(v) => patch({ cognitiveOsEnabled: v, cognitiveMode: v ? settings.cognitiveMode : "standard" })}
+                  aria-label="Cognitive OS"
+                />
+              </SettingRow>
+              {settings.cognitiveOsEnabled ? (
+                <div className="py-4">
+                  <label className="mb-1 block text-xs text-zinc-500">Cognitive surface mode</label>
+                  <select
+                    value={settings.cognitiveMode}
+                    onChange={(e) => patch({ cognitiveMode: e.target.value as CognitiveMode })}
+                    className="w-full rounded-xl border border-white/10 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100"
+                  >
+                    <option value="inner_voice">Inner Voice — full chorus</option>
+                    <option value="journal">Journal — reflection &amp; macro-time</option>
+                    <option value="planner">Planner — strategist + challenger</option>
+                    <option value="creator">Creator Lab — reframes &amp; synthesis</option>
+                  </select>
+                </div>
+              ) : null}
               <SettingRow label="Streaming responses" description="Token-by-token like ChatGPT">
                 <Switch checked={settings.streamingEnabled} onCheckedChange={(v) => patch({ streamingEnabled: v })} aria-label="Streaming" />
               </SettingRow>

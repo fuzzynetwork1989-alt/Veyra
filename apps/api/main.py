@@ -15,6 +15,7 @@ from app.routes import (
     admin,
     auth,
     chat,
+    cognitive,
     documents,
     graph,
     memory,
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Veyra API",
     description="Developer-First AI Platform Backend Services",
-    version="0.3.1",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -90,6 +91,7 @@ app.include_router(admin.router)
 app.include_router(world_model.router)
 app.include_router(router_routes.router)
 app.include_router(graph.router)
+app.include_router(cognitive.router)
 
 
 @app.get("/health")

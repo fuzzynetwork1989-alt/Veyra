@@ -2,6 +2,7 @@ export type QualityMode = "fast" | "balanced" | "deep";
 export type ThemeMode = "system" | "light" | "dark";
 export type ResponseVerbosity = "concise" | "balanced" | "thorough";
 export type MemoryMode = "session" | "project" | "persistent";
+export type CognitiveMode = "inner_voice" | "journal" | "planner" | "creator" | "standard";
 
 export const CUSTOM_INSTRUCTIONS_MAX = 7500;
 
@@ -35,6 +36,8 @@ export interface VeyraSettings {
   citationMode: boolean;
   voiceReady: boolean;
   unrestrictedMode: boolean;
+  cognitiveMode: CognitiveMode;
+  cognitiveOsEnabled: boolean;
 }
 
 export const SETTINGS_KEY = "veyra_settings";
@@ -72,6 +75,8 @@ export const DEFAULT_SETTINGS: VeyraSettings = {
   citationMode: true,
   voiceReady: false,
   unrestrictedMode: true,
+  cognitiveMode: "inner_voice",
+  cognitiveOsEnabled: true,
 };
 
 function mergeSettings(partial: Partial<VeyraSettings>): VeyraSettings {

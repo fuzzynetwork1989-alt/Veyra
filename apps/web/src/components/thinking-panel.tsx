@@ -25,8 +25,8 @@ export function ThinkingPanel({
           <IconBrain className="h-4 w-4" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-violet-200">Neural processing</p>
-          <p className="text-xs text-zinc-500">Observing how Veyra reasons through your request</p>
+          <p className="text-sm font-medium text-violet-200">Cognitive OS orchestration</p>
+          <p className="text-xs text-zinc-500">Live trace: temporal mind · ethics gate · inner chorus · faculties</p>
         </div>
         <BrainWave active={active} className="h-6" />
       </div>
@@ -50,7 +50,7 @@ export function ThinkingPanel({
           </div>
         ))}
         {active && steps.length === 0 ? (
-          <p className="text-xs text-zinc-500 animate-pulse">Initializing cognitive pipeline…</p>
+          <p className="text-xs text-zinc-500 animate-pulse">Booting Cognitive OS kernel…</p>
         ) : null}
       </div>
     </div>

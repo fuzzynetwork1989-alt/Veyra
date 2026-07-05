@@ -146,6 +146,7 @@ export default function ChatPage() {
         projectId: projectId || undefined,
         useRag,
         useAgents: prefs.defaultUseAgents,
+        cognitiveMode: prefs.cognitiveOsEnabled ? prefs.cognitiveMode : "standard",
         qualityMode: prefs.qualityMode,
         temperature: prefs.temperature,
         maxTokens: prefs.maxTokens,

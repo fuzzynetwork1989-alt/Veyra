@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.chat_sessions import ensure_chat_session, list_chat_sessions
+from app.cognitive import CognitiveKernel
 from app.llm import generate_chat_response, stream_chat_response
 from app.rate_limit import enforce_rate_limit
 from app.retrieval_service import get_project_for_user, retrieve_documents
@@ -20,6 +21,7 @@ from app.session_memory import (
 from app.usage import check_usage_quota, record_usage
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+_cognitive_kernel = CognitiveKernel()
 
 
 class ChatRequest(BaseModel):
@@ -31,6 +33,7 @@ class ChatRequest(BaseModel):
     quality_mode: str | None = None
     use_rag: bool = False
     use_agents: bool = False
+    cognitive_mode: str | None = Field(default="inner_voice")
     custom_instructions: str | None = Field(default=None, max_length=7500)
 
 
@@ -120,61 +123,32 @@ async def chat_stream(request: ChatRequest, current_user: dict = Depends(get_cur
         model = "unknown"
         tokens_used = 0
 
-        yield f"event: meta\ndata: {json.dumps({'session_id': session_id, 'retrieved_docs': retrieved_docs})}\n\n"
+        cognitive_mode = (request.cognitive_mode or "inner_voice").lower()
+        yield f"event: meta\ndata: {json.dumps({'session_id': session_id, 'retrieved_docs': retrieved_docs, 'cognitive_mode': cognitive_mode})}\n\n"
 
-        thinking_steps = [
-            {
-                "phase": "analyze",
-                "label": "Parsing intent and constraints",
-                "detail": f"Quality: {request.quality_mode or 'balanced'}",
-            },
-        ]
         if request.use_rag and request.project_id:
             doc_count = len(retrieved_docs or [])
-            thinking_steps.append(
-                {
-                    "phase": "retrieve",
-                    "label": "Scanning project knowledge base",
-                    "detail": f"{doc_count} document chunk(s) matched",
-                }
+            yield (
+                "event: thinking\n"
+                f"data: {json.dumps({'phase': 'retrieve', 'label': 'Scanning project knowledge base', 'detail': f'{doc_count} document chunk(s) matched'})}\n\n"
             )
-        if request.use_agents:
-            thinking_steps.append(
-                {
-                    "phase": "agents",
-                    "label": "Activating multi-agent orchestration",
-                    "detail": "Routing to specialized agents",
-                }
-            )
-        if request.custom_instructions:
-            thinking_steps.append(
-                {
-                    "phase": "persona",
-                    "label": "Applying custom instructions",
-                    "detail": "Merging your Veyra persona",
-                }
-            )
-        thinking_steps.append(
-            {
-                "phase": "synthesize",
-                "label": "Generating neural response",
-                "detail": "Streaming tokens",
-            }
-        )
-        for step in thinking_steps:
-            yield f"event: thinking\ndata: {json.dumps(step)}\n\n"
 
         try:
-            async for chunk in stream_chat_response(
+            async for chunk in _cognitive_kernel.stream(
+                user_id=user_id,
+                session_id=session_id,
                 message=augmented_message,
                 history=history,
-                temperature=request.temperature or 0.7,
-                max_tokens=request.max_tokens or 1024,
-                custom_instructions=request.custom_instructions,
+                cognitive_mode=cognitive_mode,
                 quality_mode=request.quality_mode,
-                use_agents=request.use_agents,
+                custom_instructions=request.custom_instructions,
+                use_rag=request.use_rag,
+                temperature=request.temperature or 0.7,
+                max_tokens=request.max_tokens or 2048,
             ):
-                if chunk["type"] == "token":
+                if chunk["type"] == "thinking":
+                    yield f"event: thinking\ndata: {json.dumps({'phase': chunk['phase'], 'label': chunk['label'], 'detail': chunk.get('detail')})}\n\n"
+                elif chunk["type"] == "token":
                     full_response += chunk["content"]
                     yield f"event: token\ndata: {json.dumps({'content': chunk['content']})}\n\n"
                 elif chunk["type"] == "done":
@@ -230,15 +204,19 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
     )
 
     started = time.perf_counter()
+    cognitive_mode = (request.cognitive_mode or "inner_voice").lower()
     try:
-        llm_result = await generate_chat_response(
+        cognitive_result = await _cognitive_kernel.process(
+            user_id=user_id,
+            session_id=session_id,
             message=augmented_message,
             history=history,
-            temperature=request.temperature or 0.7,
-            max_tokens=request.max_tokens or 1024,
-            custom_instructions=request.custom_instructions,
+            cognitive_mode=cognitive_mode,
             quality_mode=request.quality_mode,
-            use_agents=request.use_agents,
+            custom_instructions=request.custom_instructions,
+            use_rag=request.use_rag,
+            temperature=request.temperature or 0.7,
+            max_tokens=request.max_tokens or 2048,
         )
     except Exception as exc:
         raise HTTPException(
@@ -254,8 +232,12 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             session_id=session_id,
             user_id=user_id,
             role="assistant",
-            content=llm_result["response"],
-            metadata={"model": llm_result["model"], "latency_ms": latency_ms},
+            content=cognitive_result.response,
+            metadata={
+                "model": cognitive_result.model,
+                "latency_ms": latency_ms,
+                "cognitive_mode": cognitive_mode,
+            },
         )
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
@@ -263,22 +245,23 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
     record_usage(
         user_id=user_id,
         event_type="chat",
-        tokens_used=llm_result["tokens_used"],
+        tokens_used=cognitive_result.tokens_used,
         metadata={
             "session_id": session_id,
             "project_id": project_id,
-            "model": llm_result["model"],
+            "model": cognitive_result.model,
             "latency_ms": latency_ms,
+            "cognitive_mode": cognitive_mode,
         },
     )
 
     return ChatResponse(
-        response=llm_result["response"],
+        response=cognitive_result.response,
         session_id=session_id,
-        tokens_used=llm_result["tokens_used"],
-        model=llm_result["model"],
+        tokens_used=cognitive_result.tokens_used,
+        model=cognitive_result.model,
         latency_ms=latency_ms,
-        reasoning_chain=llm_result.get("reasoning_chain"),
+        reasoning_chain=[s.label for s in cognitive_result.thinking_steps],
         trace={
             "request_id": str(uuid.uuid4()),
             "user_id": user_id,
@@ -287,6 +270,10 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
             "quality_mode": request.quality_mode,
             "use_rag": request.use_rag,
             "use_agents": request.use_agents,
+            "cognitive_mode": cognitive_mode,
+            "ethics": cognitive_result.ethics,
+            "faculties": cognitive_result.faculties,
+            "inner_voices": [{"role": v["role"], "weight": v.get("weight")} for v in cognitive_result.inner_voices],
         },
         retrieved_docs=retrieved_docs,
     )

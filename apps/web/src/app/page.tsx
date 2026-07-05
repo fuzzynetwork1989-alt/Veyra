@@ -16,7 +16,7 @@ export default function Home() {
               Veyra
             </h1>
             <p className="text-base text-zinc-500 md:text-lg">
-              Next-generation AI for planning, building, and operating software systems
+              Cognitive OS — polyphonic inner selves, temporal mind, ethics gate, and dreaming consolidation
             </p>
           </div>
 
@@ -24,8 +24,8 @@ export default function Home() {
             {[
               {
                 icon: <IconBrain className="h-5 w-5 text-violet-400" />,
-                title: "Neural reasoning",
-                desc: "Watch brain-wave visualization as Veyra thinks through your requests.",
+                title: "Cognitive OS",
+                desc: "Polyphonic inner chorus, hierarchical time mind, and live orchestration trace.",
               },
               {
                 icon: <IconChat className="h-5 w-5 text-cyan-400" />,
@@ -53,6 +53,9 @@ export default function Home() {
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button size="lg" className="bg-violet-600 hover:bg-violet-500" asChild>
+              <Link href="/cognitive">Cognitive OS</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="border-white/10 bg-transparent hover:bg-white/5" asChild>
               <Link href="/chat">Open Chat</Link>
             </Button>
             <Button size="lg" variant="outline" className="border-white/10 bg-transparent hover:bg-white/5" asChild>

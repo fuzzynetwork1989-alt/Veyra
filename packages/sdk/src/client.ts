@@ -141,6 +141,7 @@ export class VeyraClient {
           quality_mode: options?.qualityMode,
           use_rag: options?.useRag,
           use_agents: options?.useAgents,
+          cognitive_mode: options?.cognitiveMode,
           custom_instructions: options?.customInstructions,
         }),
       },
@@ -179,6 +180,7 @@ export class VeyraClient {
           quality_mode: options?.qualityMode,
           use_rag: options?.useRag,
           use_agents: options?.useAgents,
+          cognitive_mode: options?.cognitiveMode,
           custom_instructions: options?.customInstructions,
         }),
         signal: controller.signal,
@@ -345,6 +347,31 @@ export class VeyraClient {
     return response.json();
   }
 
+  async getCognitiveState(): Promise<CognitiveStateResponse> {
+    const response = await this.request("/cognitive/state", {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
+  async getCognitiveTrace(sessionId: string): Promise<CognitiveTraceResponse> {
+    const params = new URLSearchParams({ session_id: sessionId });
+    const response = await this.request(`/cognitive/trace?${params.toString()}`, {
+      method: "GET",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
+  async triggerDream(): Promise<DreamResponse> {
+    const response = await this.request("/cognitive/dream", {
+      method: "POST",
+      headers: this.authHeaders(),
+    });
+    return response.json();
+  }
+
   async getChatHistory(sessionId: string): Promise<ChatHistoryResponse> {
     const params = new URLSearchParams({ session_id: sessionId });
     const response = await this.request(`/chat/history?${params.toString()}`, {
@@ -462,6 +489,8 @@ export class VeyraClient {
   }
 }
 
+export type CognitiveMode = "inner_voice" | "journal" | "planner" | "creator" | "standard";
+
 export interface ChatOptions {
   sessionId?: string;
   projectId?: string;
@@ -470,8 +499,57 @@ export interface ChatOptions {
   qualityMode?: "fast" | "balanced" | "deep";
   useRag?: boolean;
   useAgents?: boolean;
+  cognitiveMode?: CognitiveMode;
   customInstructions?: string;
   timeoutMs?: number;
+}
+
+export interface CognitiveModeInfo {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface CognitiveStateResponse {
+  profile: {
+    macro_profile: string;
+    self_notes: string;
+    preferences: Record<string, unknown>;
+    updated_at?: string;
+  };
+  meso: {
+    summary: string;
+    themes: string[];
+    period_end?: string | null;
+  };
+  recent_dreams: Array<{
+    id: string;
+    status: string;
+    sessions_processed: number;
+    insights?: string | null;
+    started_at: string;
+    completed_at?: string | null;
+  }>;
+  modes: CognitiveModeInfo[];
+}
+
+export interface CognitiveTraceResponse {
+  session_id: string;
+  events: Array<{
+    phase: string;
+    label: string;
+    detail?: string | null;
+    metadata?: Record<string, unknown>;
+    created_at: string;
+  }>;
+}
+
+export interface DreamResponse {
+  cycle_id: string;
+  sessions_processed: number;
+  status: string;
+  insights_preview?: string | null;
+  error?: string | null;
 }
 
 export interface ThinkingStepPayload {

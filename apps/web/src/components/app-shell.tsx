@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@veyra/ui";
-import { IconChat, IconHome, IconSettings, IconSpark, IconTasks } from "@/components/icons";
+import { IconBrain, IconChat, IconHome, IconSettings, IconSpark, IconTasks } from "@/components/icons";
 
 type NavItem = {
   href: string;
@@ -36,6 +36,7 @@ function NavIcon({ href, label, icon, active }: NavItem & { active: boolean }) {
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Home", icon: <IconHome /> },
   { href: "/chat", label: "Chat", icon: <IconChat /> },
+  { href: "/cognitive", label: "Cognitive OS", icon: <IconBrain /> },
   { href: "/tasks", label: "Tasks", icon: <IconTasks /> },
   { href: "/settings", label: "Settings", icon: <IconSettings /> },
 ];
